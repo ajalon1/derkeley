@@ -42,122 +42,66 @@ Example:
 
 ### macOS and Linux
 
-1. **Locate the correct archive** for your platform and architecture.
-
-   To check your architecture:
-   ```bash
-   uname -m
-   ```
-
-   To check your OS:
-   ```bash
-   uname -s
-   ```
-
-2. **Extract the archive:**
-
+1. Extract the archive:
    ```bash
    tar -xzf dr_v0.2.37_Darwin_arm64.tar.gz
    ```
 
-   This creates a `dr` binary in the current directory.
-
-3. **Choose an installation directory** (create if needed):
-
-   Common options:
-   - `~/.local/bin` — user-local directory (recommended for non-root users)
-   - `/usr/local/bin` — system-wide directory (requires `sudo`)
-
-   Example: create `~/.local/bin` if it doesn't exist:
+2. Create the installation directory:
    ```bash
    mkdir -p ~/.local/bin
    ```
 
-4. **Move the binary and make it executable:**
-
+3. Move and make the binary executable:
    ```bash
-   mv dr ~/.local/bin/dr
-   chmod +x ~/.local/bin/dr
+   mv dr ~/.local/bin/dr && chmod +x ~/.local/bin/dr
    ```
 
-   (Replace `~/.local/bin` with your chosen directory if different.)
-
-5. **Add to PATH** (if not already present):
-
-   Check if `~/.local/bin` is in your PATH:
+4. Add to PATH:
    ```bash
-   echo $PATH | grep ~/.local/bin
+   echo 'export PATH="$PATH:$HOME/.local/bin"' >> ~/.bashrc && source ~/.bashrc
    ```
+   (Use `~/.zshrc` instead of `~/.bashrc` for Zsh.)
 
-   If not, add it to your shell profile. For **bash** or **zsh**:
-
-   ```bash
-   echo 'export PATH="$PATH:$HOME/.local/bin"' >> ~/.bashrc
-   # (or ~/.zshrc for Zsh)
-   source ~/.bashrc
-   ```
-
-6. **Verify installation:**
-
+5. Verify installation:
    ```bash
    dr --version
    ```
 
 ### Windows (PowerShell)
 
-1. **Locate the correct archive** for your Windows version (64-bit).
-
-2. **Extract the archive:**
-
+1. Extract the archive:
    ```powershell
    Expand-Archive -Path dr_v0.2.37_Windows_x86_64.zip -DestinationPath .
    ```
 
-   This creates a `dr.exe` binary in the current directory.
-
-3. **Choose an installation directory** (create if needed):
-
-   Recommended: `$env:LOCALAPPDATA\Programs\dr`
-
+2. Create the installation directory:
    ```powershell
-   $installDir = "$env:LOCALAPPDATA\Programs\dr"
-   New-Item -ItemType Directory -Path $installDir -Force | Out-Null
+   New-Item -ItemType Directory -Path "$env:LOCALAPPDATA\Programs\dr" -Force | Out-Null
    ```
 
-4. **Copy the binary:**
-
+3. Move the binary:
    ```powershell
-   Copy-Item -Path .\dr.exe -Destination $installDir\dr.exe -Force
+   Move-Item -Path .\dr.exe -Destination "$env:LOCALAPPDATA\Programs\dr\dr.exe" -Force
    ```
 
-5. **Add to PATH**:
-
+4. Add to PATH:
    ```powershell
-   $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
-   if ($userPath -notlike "*$installDir*") {
-       $newPath = "$userPath;$installDir"
-       [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
-       $env:Path = $newPath
-   }
+   $installDir = "$env:LOCALAPPDATA\Programs\dr"; $userPath = [Environment]::GetEnvironmentVariable("Path", "User"); [Environment]::SetEnvironmentVariable("Path", "$userPath;$installDir", "User")
    ```
+   (Restart PowerShell for changes to take effect.)
 
-   **Note:** You may need to restart PowerShell for PATH changes to take effect.
-
-6. **Verify installation:**
-
+5. Verify installation:
    ```powershell
    dr --version
    ```
 
 ## Optional: Install shell completions
 
-Shell completions provide command auto-completion in your terminal. After installing the binary, run:
-
+After installing the binary, run:
 ```bash
 dr self completion install --yes
 ```
-
-This works offline and will install completions for your current shell (Bash, Zsh, or PowerShell).
 
 For more details, see [Shell completions](../user-guide/shell-completions.md).
 
@@ -165,55 +109,35 @@ For more details, see [Shell completions](../user-guide/shell-completions.md).
 
 ### macOS and Linux
 
-1. **Remove the binary:**
-
+1. Remove the binary:
    ```bash
    rm ~/.local/bin/dr
    ```
 
-   (Replace `~/.local/bin` with your installation directory if different.)
-
-2. **Remove from PATH** (if you added it manually):
-
-   Edit your shell profile (`~/.bashrc` or `~/.zshrc`) and remove the line containing `$HOME/.local/bin` or your custom install directory.
-
-3. **Remove shell completions:**
-
+2. Remove from PATH (edit `~/.bashrc` or `~/.zshrc` and remove the line containing `$HOME/.local/bin`):
    ```bash
-   # Zsh
-   rm -f ~/.zsh/completions/_dr
-   rm -f ~/.oh-my-zsh/custom/completions/_dr
+   sed -i.bak '/\.local\/bin/d' ~/.bashrc
+   ```
 
-   # Bash
-   rm -f ~/.bash_completions/dr
-   rm -f /etc/bash_completion.d/dr
-
-   # Clear Zsh cache
-   rm -f ~/.zcompdump*
+3. Remove shell completions:
+   ```bash
+   rm -f ~/.zsh/completions/_dr ~/.oh-my-zsh/custom/completions/_dr ~/.bash_completions/dr /etc/bash_completion.d/dr ~/.zcompdump*
    ```
 
 ### Windows (PowerShell)
 
-1. **Remove the binary:**
-
+1. Remove the binary:
    ```powershell
-   $installDir = "$env:LOCALAPPDATA\Programs\dr"
-   Remove-Item -Path $installDir\dr.exe -Force
+   Remove-Item -Path "$env:LOCALAPPDATA\Programs\dr\dr.exe" -Force
    ```
 
-2. **Remove from PATH**:
-
+2. Remove from PATH (restart PowerShell after):
    ```powershell
-   $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
-   $newPath = ($userPath -split ';' | Where-Object { $_ -ne $installDir }) -join ';'
-   [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
+   $installDir = "$env:LOCALAPPDATA\Programs\dr"; $userPath = [Environment]::GetEnvironmentVariable("Path", "User"); [Environment]::SetEnvironmentVariable("Path", ($userPath -split ';' | Where-Object { $_ -ne $installDir }) -join ';', "User")
    ```
 
-   **Note:** Restart PowerShell for PATH changes to take effect.
-
-3. **Remove shell completions** (if installed):
-
-   PowerShell completions are typically embedded in your PowerShell profile. Remove any lines referencing `dr` completion if you added them manually.
+3. Remove shell completions (if installed):
+   - Edit your PowerShell profile (`$PROFILE`) and remove any lines referencing `dr` completion.
 
 ## Next steps
 
