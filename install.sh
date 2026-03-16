@@ -16,7 +16,12 @@ set -e
 # Configuration
 REPO="datarobot-oss/cli"
 BINARY_NAME="dr"
+# INSTALL_DIR: where to install the binary (default: $HOME/.local/bin)
+#   Can be overridden via environment variable: INSTALL_DIR=/custom/path sh install.sh
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
+# VERSION: which version to install (default: latest)
+#   Can be passed as first argument: sh install.sh v0.1.0
+#   Or via environment variable: VERSION=v0.1.0 sh install.sh
 VERSION="${1:-latest}"
 
 # Colors for output
@@ -37,24 +42,28 @@ else
 fi
 
 # Helper functions
+# Print info message with colored prefix
 info() {
     printf "${GREEN}==>${NC} ${BOLD}%s${NC}\n" "$1"
 }
 
+# Print warning message
 warn() {
     printf "${YELLOW}Warning:${NC} %s\n" "$1"
 }
 
+# Print error message and exit with status 1
 error() {
     printf "${RED}Error:${NC} %s\n" "$1" >&2
     exit 1
 }
 
+# Print step message with colored arrow
 step() {
     printf "${BLUE}  →${NC} %s\n" "$1"
 }
 
-# Detect OS and architecture
+# Detect the current operating system and architecture
 detect_platform() {
     OS=$(uname -s | tr '[:upper:]' '[:lower:]')
     ARCH=$(uname -m)
@@ -89,7 +98,7 @@ detect_platform() {
     step "Detected platform: $OS $ARCH"
 }
 
-# Check for required tools
+# Verify that required tools (curl/wget, tar) are available
 check_requirements() {
     if ! command -v curl >/dev/null 2>&1 && ! command -v wget >/dev/null 2>&1; then
         error "Neither curl nor wget is available. Please install one of them."
@@ -100,7 +109,7 @@ check_requirements() {
     fi
 }
 
-# Get the latest release version or validate specified version
+# Fetch the latest version from GitHub API or validate a user-specified version
 get_version() {
     if [ "$VERSION" = "latest" ]; then
         step "Fetching latest version..."
@@ -141,7 +150,7 @@ get_version() {
     printf "   ${BOLD}Version:${NC} %s\n" "$VERSION"
 }
 
-# Compare versions (returns 0 if v1 < v2, 1 if v1 >= v2)
+# Compare semantic versions; returns 0 if v1 < v2, 1 if v1 >= v2
 compare_versions() {
     local v1=$1
     local v2=$2
@@ -163,7 +172,7 @@ compare_versions() {
     fi
 }
 
-# Check if binary is already installed
+# Check if the CLI is already installed and handle upgrade/downgrade logic
 check_existing_installation() {
     if [ -x "$INSTALL_DIR/$BINARY_NAME" ]; then
         CURRENT_VERSION=$("$INSTALL_DIR/$BINARY_NAME" --version 2>/dev/null | head -n1 || echo "unknown")
@@ -248,7 +257,7 @@ check_existing_installation() {
     fi
 }
 
-# Download and extract the binary
+# Download the release archive from GitHub and extract the binary to INSTALL_DIR
 download_and_install() {
     # Construct download URL
     ARCHIVE_NAME="${BINARY_NAME}_${VERSION}_${OS}_${ARCH}.tar.gz"
@@ -295,8 +304,7 @@ download_and_install() {
     fi
 }
 
-# Show PATH configuration instructions
-# Add directory to PATH in shell profile
+# Add INSTALL_DIR to the user's shell profile so the binary is discoverable in PATH
 add_to_path() {
     local shell_profile=""
     local path_cmd=""
@@ -343,6 +351,7 @@ add_to_path() {
     fi
 }
 
+# Display instructions for manually adding INSTALL_DIR to PATH
 show_path_instructions() {
     echo ""
     echo "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -374,7 +383,7 @@ show_path_instructions() {
     echo "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 }
 
-# Verify installation
+# Confirm the binary was successfully installed and display version information
 verify_installation() {
     if [ -x "$INSTALL_DIR/$BINARY_NAME" ]; then
         step "Verifying installation..."
@@ -385,7 +394,7 @@ verify_installation() {
     fi
 }
 
-# Prompt user to install shell completions
+# Ask the user if they want to install shell completions for their current shell
 prompt_completion_install() {
     local shell_name=""
 
@@ -424,7 +433,7 @@ prompt_completion_install() {
     fi
 }
 
-# Install shell completions using the built-in command
+# Run the built-in completion installer command to set up shell auto-completion
 install_completions() {
     # Update PATH temporarily for this script
     export PATH="$INSTALL_DIR:$PATH"
@@ -441,7 +450,7 @@ install_completions() {
     fi
 }
 
-# Check if install directory is in PATH
+# Verify that INSTALL_DIR is in the user's PATH and offer to add it if not
 check_path() {
     if echo ":$PATH:" | grep -q ":$INSTALL_DIR:"; then
         step "Installation directory is in PATH"
@@ -478,7 +487,7 @@ check_path() {
     fi
 }
 
-# Main installation flow
+# Execute the complete installation workflow: detect platform, fetch version, download, install, and configure
 main() {
       cat << "EOF"
     ____        __        ____        __          __

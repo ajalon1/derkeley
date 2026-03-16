@@ -11,6 +11,8 @@ set -e
 
 # Configuration
 BINARY_NAME="dr"
+# INSTALL_DIR: where the binary is installed (default: $HOME/.local/bin)
+#   Can be overridden via environment variable: INSTALL_DIR=/custom/path sh uninstall.sh
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
 
 # Colors for output
@@ -31,24 +33,28 @@ else
 fi
 
 # Helper functions
+# Print info message with colored prefix
 info() {
     printf "${GREEN}==>${NC} ${BOLD}%s${NC}\n" "$1"
 }
 
+# Print warning message
 warn() {
     printf "${YELLOW}Warning:${NC} %s\n" "$1"
 }
 
+# Print error message and exit with status 1
 error() {
     printf "${RED}Error:${NC} %s\n" "$1" >&2
     exit 1
 }
 
+# Print step message with colored arrow
 step() {
     printf "${BLUE}  →${NC} %s\n" "$1"
 }
 
-# Check if binary exists
+# Verify that the binary exists at INSTALL_DIR and show its version
 check_installation() {
     if [ ! -f "$INSTALL_DIR/$BINARY_NAME" ]; then
         error "DataRobot CLI is not installed at $INSTALL_DIR/$BINARY_NAME"
@@ -61,7 +67,7 @@ check_installation() {
     fi
 }
 
-# Remove binary
+# Delete the CLI binary from INSTALL_DIR
 remove_binary() {
     step "Removing binary from $INSTALL_DIR/$BINARY_NAME..."
     if rm -f "$INSTALL_DIR/$BINARY_NAME"; then
@@ -71,7 +77,7 @@ remove_binary() {
     fi
 }
 
-# Remove PATH entries from shell profiles
+# Remove INSTALL_DIR references from shell profile files (zsh, bash, fish)
 remove_from_path() {
     local modified=0
 
@@ -117,7 +123,7 @@ remove_from_path() {
     fi
 }
 
-# Remove shell completions
+# Delete shell completion files for Zsh, Bash, and Fish
 remove_completions() {
     local removed=0
 
@@ -171,7 +177,7 @@ remove_completions() {
     fi
 }
 
-# Confirm uninstallation
+# Prompt the user for confirmation before proceeding with uninstallation
 confirm_uninstall() {
     if [ -t 0 ]; then  # Check if stdin is a terminal (interactive)
         echo ""
@@ -191,7 +197,7 @@ confirm_uninstall() {
     return 0
 }
 
-# Main uninstallation flow
+# Execute the complete uninstallation workflow: check installation, remove binary, PATH entries, and completions
 main() {
     cat << "EOF"
     ____        __        ____        __          __

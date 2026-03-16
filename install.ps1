@@ -22,10 +22,14 @@ $ErrorActionPreference = 'Stop'
 # Configuration
 $REPO = "datarobot-oss/cli"
 $BINARY_NAME = "dr"
+# INSTALL_DIR: where to install the binary (default: $env:LOCALAPPDATA\Programs\dr)
+#   Can be overridden via environment variable: $env:INSTALL_DIR = "C:\custom\path"; irm ... | iex
 $INSTALL_DIR_EXPLICITLY_SET = [bool]$env:INSTALL_DIR
 $INSTALL_DIR = if ($env:INSTALL_DIR) { $env:INSTALL_DIR } else { "$env:LOCALAPPDATA\Programs\$BINARY_NAME" }
 
-# Use version from environment variable if set, otherwise use "latest"
+# VERSION: which version to install (default: latest)
+#   Can be passed as a parameter: .\install.ps1 -Version v0.1.0
+#   Or via environment variable: $env:VERSION = "v0.1.0"; irm ... | iex
 $Version = if ($env:VERSION) { $env:VERSION } else { "latest" }
 
 # ASCII Art Banner
@@ -39,24 +43,28 @@ $banner = @"
 "@
 
 # Helper functions
+# Print info message with colored prefix
 function Write-Info {
     param([string]$Message)
     Write-Host "==> " -ForegroundColor Green -NoNewline
     Write-Host $Message -ForegroundColor White
 }
 
+# Print step message with colored arrow
 function Write-Step {
     param([string]$Message)
     Write-Host "  → " -ForegroundColor Blue -NoNewline
     Write-Host $Message
 }
 
+# Print warning message
 function Write-Warn {
     param([string]$Message)
     Write-Host "Warning: " -ForegroundColor Yellow -NoNewline
     Write-Host $Message
 }
 
+# Print error message and exit with status 1
 function Write-ErrorMsg {
     param([string]$Message)
     Write-Host "Error: " -ForegroundColor Red -NoNewline
@@ -64,13 +72,14 @@ function Write-ErrorMsg {
     exit 1
 }
 
+# Print success message with checkmark
 function Write-Success {
     param([string]$Message)
     Write-Host "   ✓ " -ForegroundColor Green -NoNewline
     Write-Host $Message
 }
 
-# Detect architecture
+# Determine the system architecture (32-bit or 64-bit)
 function Get-Architecture {
     $arch = [System.Environment]::Is64BitOperatingSystem
     if ($arch) {
@@ -80,7 +89,7 @@ function Get-Architecture {
     }
 }
 
-# Check requirements
+# Verify PowerShell version meets minimum requirement (5.0+)
 function Test-Requirements {
     # PowerShell version check
     if ($PSVersionTable.PSVersion.Major -lt 5) {
@@ -88,7 +97,7 @@ function Test-Requirements {
     }
 }
 
-# Get the latest release version or validate specified version
+# Fetch the latest version from GitHub API or validate a user-specified version
 function Get-LatestVersion {
     param([string]$RequestedVersion)
 
@@ -121,7 +130,7 @@ function Get-LatestVersion {
     }
 }
 
-# Compare versions (returns -1 if v1 < v2, 0 if equal, 1 if v1 > v2)
+# Compare semantic versions; returns -1 if v1 < v2, 0 if equal, 1 if v1 > v2
 function Compare-Versions {
     param(
         [string]$Version1,
@@ -146,7 +155,7 @@ function Compare-Versions {
     }
 }
 
-# Check if binary is already installed
+# Check if the CLI is already installed and handle upgrade/downgrade logic
 function Test-ExistingInstallation {
     param(
         [string]$BinaryPath,
@@ -231,7 +240,7 @@ function Test-ExistingInstallation {
     return $false
 }
 
-# Download and install the binary
+# Download the release archive from GitHub and extract the binary to INSTALL_DIR
 function Install-Binary {
     param(
         [string]$Version,
@@ -292,7 +301,7 @@ function Install-Binary {
     }
 }
 
-# Show PATH configuration instructions
+# Display instructions for manually adding INSTALL_DIR to the user's PATH
 function Show-PathInstructions {
     Write-Host ""
     Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Yellow
@@ -310,7 +319,7 @@ function Show-PathInstructions {
     Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Yellow
 }
 
-# Add install directory to PATH
+# Add INSTALL_DIR to the user's environment PATH variable
 function Add-ToPath {
     $currentPath = [Environment]::GetEnvironmentVariable("Path", "User")
 
@@ -348,7 +357,7 @@ function Add-ToPath {
     }
 }
 
-# Verify installation
+# Confirm the binary was successfully installed and display version information
 function Test-Installation {
     param([string]$BinaryPath)
 
@@ -365,7 +374,7 @@ function Test-Installation {
     }
 }
 
-# Prompt user to install shell completions
+# Ask the user if they want to install shell completions for PowerShell
 function Invoke-CompletionPrompt {
     param([string]$BinaryPath)
 
@@ -383,7 +392,7 @@ function Invoke-CompletionPrompt {
     return $true
 }
 
-# Install PowerShell completions using the built-in command
+# Run the built-in completion installer command to set up PowerShell auto-completion
 function Install-Completions {
     param([string]$BinaryPath)
 
@@ -410,7 +419,7 @@ function Install-Completions {
     }
 }
 
-# Main installation flow
+# Execute the complete installation workflow: detect platform, fetch version, download, install, and configure
 function Install-DataRobotCLI {
     Write-Host $banner -ForegroundColor Cyan
     Write-Info "Installing DataRobot CLI"

@@ -10,6 +10,8 @@ $ErrorActionPreference = 'Stop'
 
 # Configuration
 $BINARY_NAME = "dr"
+# INSTALL_DIR: where the binary is installed (default: $env:LOCALAPPDATA\Programs\dr)
+#   Can be overridden via environment variable: $env:INSTALL_DIR = "C:\custom\path"; irm ... | iex
 $INSTALL_DIR = if ($env:INSTALL_DIR) { $env:INSTALL_DIR } else { "$env:LOCALAPPDATA\Programs\$BINARY_NAME" }
 
 $banner = @"
@@ -22,24 +24,28 @@ $banner = @"
 "@
 
 # Helper functions
+# Print info message with colored prefix
 function Write-Info {
     param([string]$Message)
     Write-Host "==> " -ForegroundColor Green -NoNewline
     Write-Host $Message -ForegroundColor White
 }
 
+# Print step message with colored arrow
 function Write-Step {
     param([string]$Message)
     Write-Host "  → " -ForegroundColor Blue -NoNewline
     Write-Host $Message
 }
 
+# Print warning message
 function Write-Warn {
     param([string]$Message)
     Write-Host "Warning: " -ForegroundColor Yellow -NoNewline
     Write-Host $Message
 }
 
+# Print error message and exit with status 1
 function Write-ErrorMsg {
     param([string]$Message)
     Write-Host "Error: " -ForegroundColor Red -NoNewline
@@ -47,13 +53,14 @@ function Write-ErrorMsg {
     exit 1
 }
 
+# Print success message with checkmark
 function Write-Success {
     param([string]$Message)
     Write-Host "   ✓ " -ForegroundColor Green -NoNewline
     Write-Host $Message
 }
 
-# Check if binary exists
+# Verify that the binary exists at INSTALL_DIR and show its version
 function Test-Installation {
     $binaryPath = Join-Path $INSTALL_DIR "$BINARY_NAME.exe"
 
@@ -70,7 +77,7 @@ function Test-Installation {
     Write-Step "Location: $binaryPath"
 }
 
-# Remove binary
+# Delete the CLI binary from INSTALL_DIR and remove empty parent directory if applicable
 function Remove-Binary {
     $binaryPath = Join-Path $INSTALL_DIR "$BINARY_NAME.exe"
 
@@ -90,7 +97,7 @@ function Remove-Binary {
     }
 }
 
-# Remove PATH entries
+# Remove INSTALL_DIR from the user and (optionally) system PATH environment variables
 function Remove-FromPath {
     $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
     $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
@@ -136,7 +143,7 @@ function Remove-FromPath {
     }
 }
 
-# Remove shell completions
+# Delete PowerShell completion references from the PowerShell profile
 function Remove-Completions {
     $removed = $false
 
@@ -187,7 +194,7 @@ function Remove-Completions {
     }
 }
 
-# Confirm uninstallation
+# Prompt the user for confirmation before proceeding with uninstallation
 function Confirm-Uninstall {
     Write-Host ""
     $response = Read-Host "Are you sure you want to uninstall DataRobot CLI? [y/N]"
@@ -198,7 +205,7 @@ function Confirm-Uninstall {
     }
 }
 
-# Main uninstallation flow
+# Execute the complete uninstallation workflow: check installation, remove binary, PATH entries, and completions
 function Uninstall-DataRobotCLI {
     Write-Host $banner -ForegroundColor Cyan
     Write-Info "Uninstalling DataRobot CLI"

@@ -85,6 +85,11 @@ irm https://cli.datarobot.com/winstall | iex
 The following are alternative installation methods for the DataRobot CLI.
 You can choose to download a binary directly, install a specific version, or build and install from source.
 
+### Airgapped / offline install
+
+If your environment does not have access to GitHub or Homebrew, see the
+[airgapped installation guide](docs/user-guide/airgapped-install.md).
+
 ### Install via Homebrew / Linuxbrew (recommended)
 
 ```bash
