@@ -160,7 +160,7 @@ Ensure the installation directory is in your PATH:
 echo $PATH
 ```
 
-Should include your installation directory. If not, add it to your shell profile as shown in step 5 above.
+Should include your installation directory. If not, add it to your shell profile as shown in step 4 above.
 
 **Windows:**
 ```powershell
