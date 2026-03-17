@@ -103,7 +103,7 @@ After installing the binary, run:
 dr self completion install --yes
 ```
 
-For more details, see [Shell completions](../user-guide/shell-completions.md).
+For more details, see [Shell completions](shell-completions.md).
 
 ## Uninstallation
 

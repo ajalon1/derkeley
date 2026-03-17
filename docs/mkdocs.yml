@@ -47,6 +47,7 @@ nav:
   - Home: index.md
   - User guide:
       - user-guide/README.md
+      - Airgapped installation: user-guide/airgapped-install.md
       - Quick reference: user-guide/quick-reference.md
       - Shell completions: user-guide/shell-completions.md
       - Configuration: user-guide/configuration.md
