@@ -22,7 +22,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25.8'
+          go-version: '1.26.1'
 
       - name: Run goreleaser
         uses: goreleaser/goreleaser-action@v6
@@ -106,27 +106,27 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="${{ github.ref_name }}"
-          
+
           # Check if this is a semantic prerelease (contains -alpha, -beta, -rc, etc.)
           if [[ "$TAG" =~ -[a-zA-Z] ]]; then
             echo "Skipping promotion: $TAG is a semantic pre-release"
             exit 0
           fi
-          
+
           # For stable releases: delete and recreate without prerelease flag
           echo "Promoting stable release: $TAG"
-          
+
           # Get release info
           RELEASE_NOTES=$(gh release view "$TAG" --json body -q .body)
           RELEASE_NAME=$(gh release view "$TAG" --json name -q .name)
-          
+
           # Download all assets
           mkdir -p /tmp/release-assets
           gh release download "$TAG" --dir /tmp/release-assets
-          
+
           # Delete the prerelease
           gh release delete "$TAG" --yes --cleanup-tag=false
-          
+
           # Recreate as stable release with same assets
           gh release create "$TAG" \
             --title "$RELEASE_NAME" \
