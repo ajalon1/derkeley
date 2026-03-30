@@ -107,6 +107,7 @@ func TestSufficientSelfVersion(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			originalVersion := version.Version
+
 			defer func() { version.Version = originalVersion }()
 
 			version.Version = tt.versionValue

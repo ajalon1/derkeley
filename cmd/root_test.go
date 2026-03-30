@@ -74,7 +74,7 @@ func TestCaseInsensitiveCommands(t *testing.T) {
 			if tt.shouldError {
 				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -98,7 +98,7 @@ func TestVersionFlag(t *testing.T) {
 			cmd.SetArgs(tt.args)
 
 			err := cmd.Execute()
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			output := buf.String()
 			assert.NotEmpty(t, output, "Version output should not be empty")

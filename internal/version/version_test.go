@@ -15,7 +15,6 @@
 package version
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -30,7 +29,7 @@ func TestAppNameVersionText(t *testing.T) {
 
 	assert.Contains(t, text, AppName, "Should contain AppName")
 	assert.Contains(t, text, "version:", "Should contain 'version:' label")
-	assert.True(t, strings.Contains(text, Version), "Should contain the Version value")
+	assert.Contains(t, text, Version, "Should contain the Version value")
 }
 
 func TestAppNameWithVersion(t *testing.T) {
@@ -38,7 +37,7 @@ func TestAppNameWithVersion(t *testing.T) {
 
 	assert.Contains(t, text, AppName, "Should contain AppName")
 	assert.Contains(t, text, "version", "Should contain 'version' label")
-	assert.True(t, strings.Contains(text, Version), "Should contain the Version value")
+	assert.Contains(t, text, Version, "Should contain the Version value")
 }
 
 func TestAppNameFullVersionText(t *testing.T) {
