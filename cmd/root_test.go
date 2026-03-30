@@ -79,3 +79,29 @@ func TestCaseInsensitiveCommands(t *testing.T) {
 		})
 	}
 }
+
+func TestVersionFlag(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{name: "--version", args: []string{"--version"}},
+		{name: "-V", args: []string{"-V"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := RootCmd
+			buf := new(bytes.Buffer)
+			cmd.SetOut(buf)
+			cmd.SetErr(buf)
+			cmd.SetArgs(tt.args)
+
+			err := cmd.Execute()
+			assert.NoError(t, err)
+
+			output := buf.String()
+			assert.NotEmpty(t, output, "Version output should not be empty")
+		})
+	}
+}
