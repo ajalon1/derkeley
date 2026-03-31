@@ -103,6 +103,9 @@ type DotenvModelTestSuite struct {
 }
 
 func (suite *DotenvModelTestSuite) SetupTest() {
+	// Reset viper to prevent user's drconfig.yaml values from leaking into tests.
+	viper.Reset()
+
 	dir, _ := os.MkdirTemp("", "datarobot-config-test")
 	suite.tempDir = dir
 
@@ -171,6 +174,7 @@ func (suite *DotenvModelTestSuite) FinalModel(tm *teatest.TestModel) Model {
 func (suite *DotenvModelTestSuite) TestDotenvModel_Happy_Path() {
 	tm := suite.NewTestModel(Model{
 		screen:         wizardScreen,
+		initialScreen:  wizardScreen,
 		DotenvFile:     filepath.Join(suite.tempDir, ".env"),
 		ShowAllPrompts: true,
 	})
@@ -217,6 +221,7 @@ func (suite *DotenvModelTestSuite) TestDotenvModel_Happy_Path() {
 func (suite *DotenvModelTestSuite) TestDotenvModel_Branching_Path() {
 	tm := suite.NewTestModel(Model{
 		screen:         wizardScreen,
+		initialScreen:  wizardScreen,
 		DotenvFile:     filepath.Join(suite.tempDir, ".env"),
 		ShowAllPrompts: true,
 	})
@@ -274,6 +279,7 @@ func (suite *DotenvModelTestSuite) TestDotenvModel_Branching_Path() {
 func (suite *DotenvModelTestSuite) TestDotenvModel_Both_Path() {
 	tm := suite.NewTestModel(Model{
 		screen:         wizardScreen,
+		initialScreen:  wizardScreen,
 		DotenvFile:     filepath.Join(suite.tempDir, ".env"),
 		ShowAllPrompts: true,
 	})
@@ -345,6 +351,7 @@ func (suite *DotenvModelTestSuite) Test__loadPromptsFindsEnvValues() {
 	suite.T().Setenv("PULUMI_CONFIG_PASSPHRASE", "existing_passphrase")
 	tm := suite.NewTestModel(Model{
 		screen:         wizardScreen,
+		initialScreen:  wizardScreen,
 		DotenvFile:     filepath.Join(suite.tempDir, ".env"),
 		ShowAllPrompts: true,
 	})
@@ -419,6 +426,7 @@ func (suite *DotenvModelTestSuite) TestDotenvModel_SkipsPromptsWithDefaults() {
 	// The wizard should start directly at DATAROBOT_DEFAULT_USE_CASE
 	tm := suite.NewTestModel(Model{
 		screen:         wizardScreen,
+		initialScreen:  wizardScreen,
 		DotenvFile:     filepath.Join(suite.tempDir, ".env"),
 		ShowAllPrompts: false, // Default behavior - skip prompts with defaults
 	})

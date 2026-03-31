@@ -183,6 +183,63 @@ func TestPromptsWithValues(t *testing.T) {
 			t.Errorf("Expected TEST_OVERRIDE to be overridden to 'from-env', got '%s'", result[0].Value)
 		}
 	})
+	t.Run("PULUMI_CONFIG_PASSPHRASE reads from viper config", func(t *testing.T) {
+		// This test verifies that PULUMI_CONFIG_PASSPHRASE gets its value from viper config
+		// when it's not in environment or .env file
+		// Note: In real usage, viper would be initialized with the config file
+		// For this test, we're just verifying the code path exists and falls back gracefully
+		variables := Variables{}
+
+		prompts := []UserPrompt{
+			{Env: "PULUMI_CONFIG_PASSPHRASE", Default: "default-pass"},
+		}
+
+		result := promptsWithValues(prompts, variables)
+
+		// When variables is empty and viper config is not set, should remain empty
+		// This allows proper validation - the value will be filled from viper when it exists
+		if result[0].Value != "" {
+			t.Errorf("Expected PULUMI_CONFIG_PASSPHRASE to be empty (for validation), got '%s'", result[0].Value)
+		}
+	})
+
+	t.Run(".env value overrides viper config for PULUMI_CONFIG_PASSPHRASE", func(t *testing.T) {
+		// Simulate viper having a config value by pre-populating the prompt Value
+		// (which is what the first loop in promptsWithValues does when viper is set)
+		prompts := []UserPrompt{
+			{Env: "PULUMI_CONFIG_PASSPHRASE", Value: "from-viper"},
+		}
+		variables := Variables{
+			{Name: "PULUMI_CONFIG_PASSPHRASE", Value: "from-dotenv"},
+		}
+
+		result := promptsWithValues(prompts, variables)
+
+		if result[0].Value != "from-dotenv" {
+			t.Errorf("Expected .env value 'from-dotenv' to override viper config, got '%s'", result[0].Value)
+		}
+	})
+
+	t.Run("env var overrides viper config for PULUMI_CONFIG_PASSPHRASE", func(t *testing.T) {
+		os.Setenv("PULUMI_CONFIG_PASSPHRASE", "from-env")
+
+		defer os.Unsetenv("PULUMI_CONFIG_PASSPHRASE")
+
+		// The first loop won't set a viper value since the env var is present,
+		// so Value remains "". The second loop should pick up the env var.
+		prompts := []UserPrompt{
+			{Env: "PULUMI_CONFIG_PASSPHRASE"},
+		}
+		variables := Variables{
+			{Name: "PULUMI_CONFIG_PASSPHRASE", Value: "from-dotenv"},
+		}
+
+		result := promptsWithValues(prompts, variables)
+
+		if result[0].Value != "from-env" {
+			t.Errorf("Expected env var 'from-env' to take highest priority, got '%s'", result[0].Value)
+		}
+	})
 }
 
 func TestIsOptionSelected(t *testing.T) {

@@ -18,6 +18,8 @@ import (
 	"os"
 	"slices"
 	"strings"
+
+	"github.com/spf13/viper"
 )
 
 // ValidationResult represents the validation status of a single variable.
@@ -109,18 +111,34 @@ func ValidateEnvironment(repoRoot string, variables Variables) EnvironmentValida
 // promptsWithValues updates slice of prompts with values from .env file contents
 // and environment variables (environment variables take precedence).
 func promptsWithValues(prompts []UserPrompt, variables Variables) []UserPrompt {
+	// Special handling for PULUMI_CONFIG_PASSPHRASE from viper config
+	// This happens regardless of whether variables exist
+	for p := range prompts {
+		if prompts[p].Env == "PULUMI_CONFIG_PASSPHRASE" {
+			// Check if already set in environment
+			if _, ok := os.LookupEnv(prompts[p].Env); !ok {
+				// Not in environment, check viper config
+				if configValue := viper.GetString("pulumi_config_passphrase"); configValue != "" {
+					prompts[p].Value = configValue
+				}
+			}
+		}
+	}
+
 	if len(variables) == 0 {
 		return prompts
 	}
 
 	for p, prompt := range prompts {
-		// Capture existing env var values
+		// Capture existing env var values (highest priority)
 		if existingEnvValue, ok := os.LookupEnv(prompt.Env); ok {
 			prompt.Value = existingEnvValue
 		} else if v, found := variables.find(prompt); found {
+			// .env file value overrides viper config
 			prompt.Value = v.Value
 			prompt.Commented = v.Commented
-		} else {
+		} else if prompt.Value == "" {
+			// Only fall back to default if nothing else (including viper config) set a value
 			prompt.Value = prompt.Default
 		}
 
