@@ -77,10 +77,8 @@ homebrew_casks:
   - name: dr-cli
     hooks:
       post:
-        # This is temporary while we wait for notarization to be available with help from IT
         install: |
           if OS.mac?
-            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/dr"]
             system_command "/bin/ln", args: ["-sf", "#{HOMEBREW_PREFIX}/bin/dr", "#{HOMEBREW_PREFIX}/bin/datarobot"]
           end
         uninstall: |
