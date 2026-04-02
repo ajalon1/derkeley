@@ -124,5 +124,6 @@ notarize:
         key_id: "{{ .Env.MACOS_NOTARY_KEY_ID }}"
         key: "{{ .Env.MACOS_NOTARY_KEY }}"
         wait: true
+        # notarization can take a while, but this is roughly 45s
+        # as of 2026-04-02. 10m feels like a safe upper bound.
         timeout: 10m
-        staple: true
