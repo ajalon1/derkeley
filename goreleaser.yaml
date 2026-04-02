@@ -125,3 +125,4 @@ notarize:
         key: "{{ .Env.MACOS_NOTARY_KEY }}"
         wait: true
         timeout: 10m
+        staple: true
