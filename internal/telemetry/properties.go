@@ -44,7 +44,6 @@ type CommonProperties struct {
 	OSInfo            string // runtime.GOOS/runtime.GOARCH
 	Environment       string // US, EU, JP, or custom — from endpoint URL
 	DataRobotInstance string // Base URL of configured DataRobot instance
-	CWD               string // Current working directory
 	TemplateName      string // Best-effort from .datarobot/answers/ dir
 }
 
@@ -58,11 +57,6 @@ func CollectCommonProperties() *CommonProperties {
 		CLIVersion:    version.Version,
 		InstallMethod: InstallMethod,
 		OSInfo:        runtime.GOOS + "/" + runtime.GOARCH,
-	}
-
-	// Get current working directory
-	if cwd, err := os.Getwd(); err == nil {
-		props.CWD = cwd
 	}
 
 	// Get DataRobot instance info from config
@@ -97,7 +91,6 @@ func (p *CommonProperties) AsMap() map[string]interface{} {
 		"os_info":            p.OSInfo,
 		"environment":        p.Environment,
 		"datarobot_instance": p.DataRobotInstance,
-		"cwd":                p.CWD,
 		"template_name":      p.TemplateName,
 	}
 }

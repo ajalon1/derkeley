@@ -47,7 +47,6 @@ func TestCommonPropertiesAsMap(t *testing.T) {
 		OSInfo:            "darwin/arm64",
 		Environment:       "US",
 		DataRobotInstance: "https://app.datarobot.com",
-		CWD:               "/home/user",
 		TemplateName:      "base",
 	}
 
@@ -60,8 +59,9 @@ func TestCommonPropertiesAsMap(t *testing.T) {
 	assert.Equal(t, "darwin/arm64", m["os_info"])
 	assert.Equal(t, "US", m["environment"])
 	assert.Equal(t, "https://app.datarobot.com", m["datarobot_instance"])
-	assert.Equal(t, "/home/user", m["cwd"])
 	assert.Equal(t, "base", m["template_name"])
+	// Verify CWD is not included
+	assert.NotContains(t, m, "cwd")
 }
 
 func TestDeriveEnvironment_US(t *testing.T) {
