@@ -72,6 +72,7 @@ var EditCmd = &cobra.Command{
 
 		// Default is editor screen but if we detect other Env Vars we'll potentially use wizard screen
 		screen := editorScreen
+
 		if repo.IsInRepo() {
 			if handleExtraEnvVars(variables) {
 				screen = wizardScreen
