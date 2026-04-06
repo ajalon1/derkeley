@@ -312,7 +312,7 @@ func (m pulumiLoginModel) View() string {
 				cursor = pulumiArrow.String() + " "
 			}
 
-			sb.WriteString(fmt.Sprintf("%s%s\n", cursor, option))
+			fmt.Fprintf(&sb, "%s%s\n", cursor, option)
 		}
 
 		sb.WriteString("\n")
@@ -321,8 +321,8 @@ func (m pulumiLoginModel) View() string {
 	case pulumiLoginScreenDIYURL:
 		sb.WriteString(tui.SubTitleStyle.Render("DIY Backend Configuration"))
 		sb.WriteString("\n\n")
-		sb.WriteString(fmt.Sprintf("For more information about backends, see:\n%s\n\n",
-			lipgloss.NewStyle().Foreground(tui.DrPurple).Render(pulumiDocsURL)))
+		fmt.Fprintf(&sb, "For more information about backends, see:\n%s\n\n",
+			lipgloss.NewStyle().Foreground(tui.DrPurple).Render(pulumiDocsURL))
 		sb.WriteString("Enter your backend URL:\n")
 		sb.WriteString("Examples: s3://my-pulumi-bucket, azblob://..., gs://...\n\n")
 		sb.WriteString(m.diyInput.View())

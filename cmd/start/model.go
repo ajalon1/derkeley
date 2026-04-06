@@ -350,11 +350,11 @@ func (m Model) View() string { //nolint: cyclop
 
 		for i, step := range m.steps {
 			if i < m.current {
-				sb.WriteString(fmt.Sprintf("  %s %s\n", checkMark, tui.DimStyle.Render(step.description)))
+				fmt.Fprintf(&sb, "  %s %s\n", checkMark, tui.DimStyle.Render(step.description))
 			} else if i == m.current {
-				sb.WriteString(fmt.Sprintf("  %s %s\n", arrow, step.description))
+				fmt.Fprintf(&sb, "  %s %s\n", arrow, step.description)
 			} else {
-				sb.WriteString(fmt.Sprintf("    %s\n", tui.DimStyle.Render(step.description)))
+				fmt.Fprintf(&sb, "    %s\n", tui.DimStyle.Render(step.description))
 			}
 		}
 
@@ -363,7 +363,7 @@ func (m Model) View() string { //nolint: cyclop
 
 	// Display error or status message
 	if m.err != nil {
-		sb.WriteString(fmt.Sprintf("%s %s\n", tui.ErrorStyle.Render("Error: "), m.err.Error()))
+		fmt.Fprintf(&sb, "%s %s\n", tui.ErrorStyle.Render("Error: "), m.err.Error())
 
 		return sb.String()
 	}

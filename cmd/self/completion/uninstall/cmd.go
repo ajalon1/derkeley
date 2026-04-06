@@ -210,13 +210,14 @@ func zshCompletionPaths(homeDir string) []string {
 		filepath.Join(homeDir, ".zsh", "completions"),
 	}
 
-	names := []string{"_" + version.CliName}
+	names := make([]string, 1+len(version.CliAliases))
+	names[0] = "_" + version.CliName
 
-	for _, alias := range version.CliAliases {
-		names = append(names, "_"+alias)
+	for i, alias := range version.CliAliases {
+		names[i+1] = "_" + alias
 	}
 
-	var paths []string
+	paths := make([]string, 0, len(names)*len(dirs))
 
 	for _, dir := range dirs {
 		for _, name := range names {
@@ -230,10 +231,11 @@ func zshCompletionPaths(homeDir string) []string {
 func fishCompletionPaths(homeDir string) []string {
 	base := filepath.Join(homeDir, ".config", "fish", "completions")
 
-	paths := []string{filepath.Join(base, version.CliName+".fish")}
+	paths := make([]string, 1+len(version.CliAliases))
+	paths[0] = filepath.Join(base, version.CliName+".fish")
 
-	for _, alias := range version.CliAliases {
-		paths = append(paths, filepath.Join(base, alias+".fish"))
+	for i, alias := range version.CliAliases {
+		paths[i+1] = filepath.Join(base, alias+".fish")
 	}
 
 	return paths
