@@ -144,6 +144,7 @@ func getTemplateName() (string, error) {
 	}
 
 	answersDir := filepath.Join(repoRoot, ".datarobot", "answers")
+
 	entries, err := os.ReadDir(answersDir)
 	if err != nil {
 		return "", err

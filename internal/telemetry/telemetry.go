@@ -91,6 +91,7 @@ func (c *Client) Track(event types.Event) {
 		for k, v := range event.EventProperties {
 			commonMap[k] = v
 		}
+
 		event.EventProperties = commonMap
 
 		// Set UserID as top-level field (required by Amplitude)

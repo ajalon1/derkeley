@@ -84,6 +84,7 @@ using pre-built templates. Get from idea to production in minutes, not hours.
 		if telemetry.IsEnabled() {
 			props = telemetry.CollectCommonProperties()
 		}
+
 		client := telemetry.NewClient(props)
 
 		// Store telemetry client in context for use by commands
