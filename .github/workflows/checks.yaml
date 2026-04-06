@@ -60,7 +60,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v7
         with:
-          version: v2.6.0
+          version: ${{ env.GOLANGCI_LINT_VERSION }}
           args: --timeout=5m
 
       - name: GoReleaser Check
