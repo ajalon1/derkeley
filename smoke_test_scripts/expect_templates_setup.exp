@@ -100,6 +100,10 @@ expect {
 #   or for the wizard to auto-complete all prompts ("Skipped" only appears after
 #   moveToNextPrompt sets skippedPrompts > 0, never on the initial flash).
 # This phase also handles the transition from Pulumi back to the wizard.
+# If "enter to finish" is seen here (e.g. after Phase 0 consumed "Skipped" and
+# the menu is already rendered), set a flag so Phase 2 is skipped — otherwise
+# Phase 2 would block forever waiting for text that was already consumed.
+set already_finished 0
 set timeout 60
 expect {
     "Variable:" {
@@ -110,8 +114,9 @@ expect {
         # All prompts had defaults and were auto-skipped — wizard is done
     }
     "enter to finish" {
-        # Already on the list/menu screen — wizard auto-completed
+        # Menu already shown — wizard auto-completed before Phase 1 ran
         send -- "\r\n"
+        set already_finished 1
     }
     timeout {
         puts "ERROR: Timeout waiting for wizard to start"
@@ -122,25 +127,28 @@ expect {
 # Phase 2: Handle remaining wizard prompts, then exit the menu.
 # "enter to finish" only appears on the list screen AFTER the wizard completes
 # and the .env file has been saved.
-set done 0
-while {!$done} {
-    expect {
-        "space to toggle" {
-            # Multi-select list fully rendered — press Enter to accept defaults
-            send -- "\r\n"
-        }
-        "Variable:" {
-            # Next wizard prompt — press Enter to accept default
-            send -- "\r\n"
-        }
-        "enter to finish" {
-            # Back on the menu after wizard — press Enter to finish
-            send -- "\r\n"
-            set done 1
-        }
-        timeout {
-            puts "ERROR: Timeout waiting for next variable prompt or menu"
-            exit 1
+# Skipped if Phase 1 already handled the final "enter to finish".
+if {!$already_finished} {
+    set done 0
+    while {!$done} {
+        expect {
+            "space to toggle" {
+                # Multi-select list fully rendered — press Enter to accept defaults
+                send -- "\r\n"
+            }
+            "Variable:" {
+                # Next wizard prompt — press Enter to accept default
+                send -- "\r\n"
+            }
+            "enter to finish" {
+                # Back on the menu after wizard — press Enter to finish
+                send -- "\r\n"
+                set done 1
+            }
+            timeout {
+                puts "ERROR: Timeout waiting for next variable prompt or menu"
+                exit 1
+            }
         }
     }
 }
