@@ -74,9 +74,9 @@ tasks:
       - "{{.BIN_DIR}}/gofumpt -l -w ."
       - echo "🧹 Vetting go.mod…"
       - go vet ./...
-      - echo "🧹 GoCI Lint…"
-      - "{{.BIN_DIR}}/golangci-lint run ./..."
-      - echo "🧹 Check GoReleaser…"
+      - echo "🧹 Linting…"
+      - "{{.BIN_DIR}}/golangci-lint run --fix ./..."
+      - echo "🧹 Checking GoReleaser config…"
       - "{{.BIN_DIR}}/goreleaser check"
 
   run:
