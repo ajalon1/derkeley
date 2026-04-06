@@ -45,6 +45,53 @@ sleep 1
 expect "talk-to-my-docs-agents"
 send -- "\r\n"
 
+# Phase 0: Handle Pulumi setup if it appears before the dotenv wizard.
+# The Pulumi State Backend Selection screen may appear before the wizard if the
+# template includes PULUMI_CONFIG_PASSPHRASE and Pulumi is installed but not
+# logged in on the runner.
+set timeout 30
+expect {
+    "Pulumi State Backend Selection" {
+        puts "Pulumi setup screen detected - selecting Login locally"
+
+        # "Login locally" is the first option, already highlighted — press enter
+        send -- "\r\n"
+
+        # After local login, a passphrase prompt may appear
+        set timeout 60
+        expect {
+            "PULUMI_CONFIG_PASSPHRASE" {
+                puts "Passphrase prompt appeared - accepting auto-generate"
+                # Press enter/y to auto-generate passphrase
+                send -- "\r\n"
+            }
+            "Variable:" {
+                # Pulumi completed without passphrase, wizard started directly
+                puts "Pulumi done, wizard started"
+                send -- "\r\n"
+            }
+            "Skipped" {
+                puts "Pulumi done, prompts auto-skipped"
+            }
+            timeout {
+                puts "ERROR: Timeout after Pulumi login"
+                exit 1
+            }
+        }
+    }
+    "Variable:" {
+        # No Pulumi setup needed — wizard started directly
+        send -- "\r\n"
+    }
+    "Skipped" {
+        # No Pulumi setup needed — prompts auto-skipped
+    }
+    timeout {
+        puts "ERROR: Timeout waiting for wizard or Pulumi setup"
+        exit 1
+    }
+}
+
 # The dotenv model briefly flashes the "Environment Variables Menu" list screen
 # while it asynchronously loads prompts. We must NOT match that transient screen,
 # otherwise we'd exit before the wizard runs and the .env file is never written.
@@ -52,6 +99,8 @@ send -- "\r\n"
 # Phase 1: Wait for the wizard to actually start ("Variable:" is wizard-only text)
 #   or for the wizard to auto-complete all prompts ("Skipped" only appears after
 #   moveToNextPrompt sets skippedPrompts > 0, never on the initial flash).
+# This phase also handles the transition from Pulumi back to the wizard.
+set timeout 60
 expect {
     "Variable:" {
         # First wizard prompt appeared — accept default
@@ -59,6 +108,10 @@ expect {
     }
     "Skipped" {
         # All prompts had defaults and were auto-skipped — wizard is done
+    }
+    "enter to finish" {
+        # Already on the list/menu screen — wizard auto-completed
+        send -- "\r\n"
     }
     timeout {
         puts "ERROR: Timeout waiting for wizard to start"
