@@ -18,7 +18,7 @@ This guide outlines how to build, test, and develop with the DataRobot CLI.
 
 ### Prerequisites
 
-- [Go 1.25.8+](https://golang.org/dl/)
+- [Go 1.26.1+](https://golang.org/dl/)
 - Git version control
 - [Task](https://taskfile.dev/installation/) (The task runner)
 
@@ -377,6 +377,20 @@ task install-tools  # Install golangci-lint
 ./tmp/bin/golangci-lint run ./...
 ./tmp/bin/goreleaser check
 ```
+
+### Updating golangci-lint for Go version upgrades
+
+When upgrading the Go version in `go.mod`, you may need to update golangci-lint to ensure compatibility:
+
+1. Check the [golangci-lint releases](https://github.com/golangci/golangci-lint/releases) for a version that supports your target Go version
+2. Update `GOLANGCI_LINT_VERSION` in `Taskfile.yaml` to the new version
+3. Run `task install-tools` to download the pre-built binary for the new version
+4. Run `task lint` to verify all checks pass
+
+**Important**: golangci-lint is installed as a standalone pre-built binary (via the install script in `Taskfile.yaml`), not via `go install`. This means:
+- Version mismatches between your project's Go version and golangci-lint's internal Go version are handled automatically
+- The pre-built binary includes its own Go runtime, so it works with any project Go version
+- Always use `task install-tools` after updating the version variable
 
 ## Development workflow
 

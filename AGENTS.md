@@ -76,6 +76,17 @@ All code must pass these tools without errors:
 
 **Before submitting code, mentally verify it follows wsl (whitespace) rules.**
 
+### Updating golangci-lint
+
+When upgrading the Go version in `go.mod`, you may need to update golangci-lint to ensure compatibility:
+
+1. Check the [golangci-lint releases](https://github.com/golangci/golangci-lint/releases) for a version that supports your target Go version
+2. Update the `GOLANGCI_LINT_VERSION` variable in `Taskfile.yaml`
+3. Run `task install-tools` to download the pre-built binary
+4. Run `task lint` to verify compatibility
+
+The `GOLANGCI_LINT_VERSION` is pinned to ensure reproducible builds across all development environments. The binary is installed as a standalone pre-built artifact, not via `go install`, so version mismatches between your project's Go version and golangci-lint's internal Go version are handled automatically.
+
 ## PR Output Format
 
 Output change summaries in Markdown format using the template in `.github/PULL_REQUEST_TEMPLATE.md`.

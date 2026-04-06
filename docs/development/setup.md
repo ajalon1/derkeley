@@ -6,7 +6,7 @@ This page outlines how to set up your development environment to build and devel
 
 ## Prerequisites
 
-- [Go 1.25.8](https://golang.org/dl/)
+- [Go 1.26.1](https://golang.org/dl/)
 - Git for version control
 - [Task](https://taskfile.dev/installation/) (A task runner)
 
@@ -134,6 +134,22 @@ task lint
 # Format code only
 task fmt
 ```
+
+### Updating golangci-lint
+
+When upgrading the Go version in `go.mod`, update golangci-lint if needed:
+
+```bash
+# 1. Check available versions at https://github.com/golangci/golangci-lint/releases
+# 2. Update GOLANGCI_LINT_VERSION in Taskfile.yaml
+# 3. Reinstall the binary
+task install-tools
+
+# 4. Verify linting works
+task lint
+```
+
+golangci-lint is installed as a pre-built binary, so version mismatches with your project's Go version are handled automatically.
 
 ## Next steps
 
