@@ -133,9 +133,9 @@ func (up UserPrompt) StringWithoutHelp() string {
 			result.WriteString("# ")
 		}
 
-		result.WriteString(fmt.Sprintf("%s=%v", up.Env, quotedValue))
+		fmt.Fprintf(&result, "%s=%v", up.Env, quotedValue)
 	} else {
-		result.WriteString(fmt.Sprintf("# %s=%v", up.Key, quotedValue))
+		fmt.Fprintf(&result, "# %s=%v", up.Key, quotedValue)
 	}
 
 	return result.String()

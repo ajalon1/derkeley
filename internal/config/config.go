@@ -150,9 +150,9 @@ func DebugViperConfig() (string, error) {
 
 		// Skip token because its sensitive
 		if key == "token" {
-			sb.WriteString(fmt.Sprintf("  %s: %s\n", key, "****"))
+			fmt.Fprintf(&sb, "  %s: %s\n", key, "****")
 		} else {
-			sb.WriteString(fmt.Sprintf("  %s: %v\n", key, value))
+			fmt.Fprintf(&sb, "  %s: %v\n", key, value)
 		}
 	}
 

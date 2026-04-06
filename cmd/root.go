@@ -67,7 +67,6 @@ using pre-built templates. Get from idea to production in minutes, not hours.
 		// PersistentPreRunE is a hook called after flags are parsed
 		// but before the command is run. Any logic that needs to happen
 		// before ANY command execution should go here.
-
 		log.Start()
 
 		return initializeConfig(cmd)

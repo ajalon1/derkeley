@@ -191,7 +191,7 @@ func (lm LoginModel) View() string {
 	if lm.loginMessage != "" {
 		sb.WriteString(lm.loginMessage)
 	} else if lm.err != nil {
-		sb.WriteString(fmt.Sprintf("something went wrong: %s", lm.err))
+		fmt.Fprintf(&sb, "something went wrong: %s", lm.err)
 		sb.WriteString("\n\n")
 	}
 
