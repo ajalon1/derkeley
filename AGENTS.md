@@ -66,19 +66,21 @@ func example() {
 
 ## Quality Tools
 
-The `task lint` command runs the following tools in order:
+The `task lint` command runs the following tools:
 
 **Fixing phase:**
+
 - `go mod tidy` - dependency management
 - `go fmt` - basic formatting
 - `gofumpt` - aggressive Go formatting
 - `golangci-lint --fix` - comprehensive linting with automatic fixes (includes wsl, revive, staticcheck)
 
 **Checking phase:**
+
 - `go vet` - suspicious constructs
 - `goreleaser check` - release configuration validation
 
-All code must pass these tools without errors. **Before submitting code, mentally verify it follows wsl (whitespace) rules.**
+All code must pass these tools without errors.
 
 ### Updating golangci-lint
 
