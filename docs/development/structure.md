@@ -125,9 +125,7 @@ Documentation organized by audience:
 
 Each command follows this pattern:
 
-**Note:** All top-level commands use singular names (e.g., `template`, `dependency`, `plugin`) for consistency.
-Plural aliases are available for backward compatibility and should be added when renaming existing commands.
-See [AGENTS.md](../../AGENTS.md) for naming conventions.
+**Note:** All top-level commands use singular names (e.g., `template`, `dependency`, `plugin`) for consistency. Plural aliases are available for backward compatibility and should be added when renaming existing commands.
 
 ```go
 // cmd/example/cmd.go
