@@ -25,7 +25,7 @@ func Cmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "component",
 		GroupID: "core",
-		Short:   "🧩 Manage components",
+		Short:   "🧩 Manage application components",
 		Aliases: []string{"c"},
 	}
 
