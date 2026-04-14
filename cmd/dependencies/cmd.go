@@ -24,6 +24,7 @@ func Cmd() *cobra.Command {
 		Use:     "dependencies",
 		GroupID: "advanced",
 		Short:   "📦 Commands related to template dependencies",
+		Aliases: []string{"deps"},
 	}
 
 	cmd.AddCommand(
