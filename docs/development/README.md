@@ -121,8 +121,6 @@ cmd := &cobra.Command{
 }
 ```
 
-See [AGENTS.md](../../AGENTS.md#command-naming-conventions) for more details.
-
 ## Testing
 
 ```bash
