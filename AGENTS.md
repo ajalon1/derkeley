@@ -26,6 +26,12 @@ Use Taskfile tasks rather than raw Go commands:
 
 **Go Version Requirement:** Tests run with the `-race` flag for data race detection. The race runtime must match your Go compiler version exactly. If you see errors like `compile: version "go1.X.Y" does not match go tool version "go1.X.Z"`, ensure your installed Go version matches the version in `go.mod` (run `brew upgrade go` or adjust `go.mod` accordingly).
 
+## Command Naming Conventions
+
+- **Commands must use singular names** (e.g., `template`, `dependency`, `plugin`)
+- Plural aliases are acceptable for backward compatibility (e.g., `templates`, `dependencies`, `plugins`)
+- Maintain consistency across all top-level and sub-commands
+
 ## Code Style Requirements
 
 ### Go Whitespace Rules (Critical)
