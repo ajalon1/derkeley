@@ -21,10 +21,10 @@ import (
 
 func Cmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "dependencies",
+		Use:     "dependency",
 		GroupID: "advanced",
 		Short:   "📦 Commands related to template dependencies",
-		Aliases: []string{"deps"},
+		Aliases: []string{"dependencies", "deps"},
 	}
 
 	cmd.AddCommand(
