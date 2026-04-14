@@ -107,6 +107,22 @@ All code must:
 
 See [Building](building.md#coding-standards) for detailed requirements.
 
+## Command naming conventions
+
+All CLI commands must use **singular names** for consistency (e.g., `template`, `dependency`, `plugin`).
+Plural aliases should be added to commands that are renamed from plural to singular for backward compatibility.
+
+Example:
+```go
+cmd := &cobra.Command{
+    Use:     "template",                    // Singular primary name
+    Aliases: []string{"templates"},         // Plural as alias
+    // ...
+}
+```
+
+See [AGENTS.md](../../AGENTS.md#command-naming-conventions) for more details.
+
 ## Testing
 
 ```bash
