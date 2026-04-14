@@ -15,6 +15,7 @@
 package install
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -353,7 +354,7 @@ func TestResolveShell(t *testing.T) {
 	}
 }
 
-func testEnsureFpathInZshrcHelper(t *testing.T, name, content, shouldContain string) {
+func testEnsureFpathInZshrcHelper(t *testing.T, content, shouldContain string) {
 	t.Helper()
 
 	tmpDir, err := os.MkdirTemp("", "test-zshrc-*")
@@ -383,9 +384,15 @@ func testEnsureFpathInZshrcHelper(t *testing.T, name, content, shouldContain str
 }
 
 func TestEnsureFpathInZshrc(t *testing.T) {
-	testEnsureFpathInZshrcHelper(t, "add fpath to empty zshrc", "", "fpath=")
-	testEnsureFpathInZshrcHelper(t, "add fpath to existing content", "export PATH=/usr/local/bin:$PATH\n", "fpath=")
-	testEnsureFpathInZshrcHelper(t, "already contains fpath", "fpath=(/custom/path $fpath)\n", "/custom/path")
+	t.Run("add fpath to empty zshrc", func(t *testing.T) {
+		testEnsureFpathInZshrcHelper(t, "", "fpath=")
+	})
+	t.Run("add fpath to existing content", func(t *testing.T) {
+		testEnsureFpathInZshrcHelper(t, "export PATH=/usr/local/bin:$PATH\n", "fpath=")
+	})
+	t.Run("already contains fpath", func(t *testing.T) {
+		testEnsureFpathInZshrcHelper(t, "fpath=(/custom/path $fpath)\n", "/custom/path")
+	})
 }
 
 func TestEnsureFpathInZshrcNotFound(t *testing.T) {
@@ -400,7 +407,7 @@ func TestEnsureFpathInZshrcNotFound(t *testing.T) {
 
 	err = ensureFpathInZshrc(nonexistentPath, compDir)
 	if err == nil {
-		t.Error("expected error for nonexistent file, got nil")
+		t.Fatal("expected error for nonexistent file, got nil")
 	}
 
 	if !strings.Contains(err.Error(), "~/.zshrc not found") {
@@ -408,7 +415,7 @@ func TestEnsureFpathInZshrcNotFound(t *testing.T) {
 	}
 }
 
-func testEnsureSourceInBashrcHelper(t *testing.T, content, completionFile, shouldContain string) {
+func testEnsureSourceInBashrcHelper(t *testing.T, compFileInTmpDir, expectedInFile string, expectIdempotent bool) {
 	t.Helper()
 
 	tmpDir, err := os.MkdirTemp("", "test-bashrc-*")
@@ -418,11 +425,18 @@ func testEnsureSourceInBashrcHelper(t *testing.T, content, completionFile, shoul
 	defer os.RemoveAll(tmpDir)
 
 	bashrcPath := filepath.Join(tmpDir, ".bashrc")
-	if err := os.WriteFile(bashrcPath, []byte(content), 0o644); err != nil {
+	compFile := filepath.Join(tmpDir, compFileInTmpDir)
+
+	// For idempotent test, pre-populate bashrc with the expected source line
+	var initialContent string
+	if expectIdempotent {
+		initialContent = fmt.Sprintf("[ -f %s ] && source %s\n", compFile, compFile)
+	}
+
+	if err := os.WriteFile(bashrcPath, []byte(initialContent), 0o644); err != nil {
 		t.Fatalf("failed to write bashrc: %v", err)
 	}
 
-	compFile := filepath.Join(tmpDir, completionFile)
 	if err := ensureSourceInBashrc(bashrcPath, compFile); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -432,15 +446,30 @@ func testEnsureSourceInBashrcHelper(t *testing.T, content, completionFile, shoul
 		t.Fatalf("failed to read bashrc: %v", err)
 	}
 
-	if !strings.Contains(string(fileContent), shouldContain) {
-		t.Errorf("expected content to contain %q, got: %s", shouldContain, string(fileContent))
+	contentStr := string(fileContent)
+	if !strings.Contains(contentStr, expectedInFile) {
+		t.Errorf("expected content to contain %q, got: %s", expectedInFile, contentStr)
+	}
+
+	// For idempotent test, verify it only appears once
+	if expectIdempotent {
+		sourceCount := strings.Count(contentStr, fmt.Sprintf("[ -f %s ]", compFile))
+		if sourceCount != 1 {
+			t.Errorf("expected source line to appear exactly once, got %d", sourceCount)
+		}
 	}
 }
 
 func TestEnsureSourceInBashrc(t *testing.T) {
-	testEnsureSourceInBashrcHelper(t, "", ".bash_completions/dr", "source")
-	testEnsureSourceInBashrcHelper(t, "export PATH=/usr/local/bin:$PATH\n", ".bash_completions/dr", "source")
-	testEnsureSourceInBashrcHelper(t, "[ -f /existing/completion ] && source /existing/completion\n", "/existing/completion", "/existing/completion")
+	t.Run("add source to empty bashrc", func(t *testing.T) {
+		testEnsureSourceInBashrcHelper(t, ".bash_completions/dr", "source", false)
+	})
+	t.Run("add source to bashrc with existing content", func(t *testing.T) {
+		testEnsureSourceInBashrcHelper(t, ".bash_completions/dr", "source", false)
+	})
+	t.Run("already contains source line", func(t *testing.T) {
+		testEnsureSourceInBashrcHelper(t, ".bash_completions/dr", "source", true)
+	})
 }
 
 func TestEnsureSourceInBashrcNotFound(t *testing.T) {
@@ -455,7 +484,7 @@ func TestEnsureSourceInBashrcNotFound(t *testing.T) {
 
 	err = ensureSourceInBashrc(nonexistentPath, completionFile)
 	if err == nil {
-		t.Error("expected error for nonexistent file, got nil")
+		t.Fatal("expected error for nonexistent file, got nil")
 	}
 
 	if !strings.Contains(err.Error(), "~/.bashrc not found") {
