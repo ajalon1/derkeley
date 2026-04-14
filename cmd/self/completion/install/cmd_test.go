@@ -16,6 +16,7 @@ package install
 
 import (
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -349,6 +350,116 @@ func TestResolveShell(t *testing.T) {
 				t.Errorf("expected %q, got %q", tt.expected, shell)
 			}
 		})
+	}
+}
+
+func testEnsureFpathInZshrcHelper(t *testing.T, name, content, shouldContain string) {
+	t.Helper()
+
+	tmpDir, err := os.MkdirTemp("", "test-zshrc-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	zshrcPath := filepath.Join(tmpDir, ".zshrc")
+	if err := os.WriteFile(zshrcPath, []byte(content), 0o644); err != nil {
+		t.Fatalf("failed to write zshrc: %v", err)
+	}
+
+	compDir := filepath.Join(tmpDir, ".zsh", "completions")
+	if err := ensureFpathInZshrc(zshrcPath, compDir); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	fileContent, err := os.ReadFile(zshrcPath)
+	if err != nil {
+		t.Fatalf("failed to read zshrc: %v", err)
+	}
+
+	if !strings.Contains(string(fileContent), shouldContain) {
+		t.Errorf("expected content to contain %q, got: %s", shouldContain, string(fileContent))
+	}
+}
+
+func TestEnsureFpathInZshrc(t *testing.T) {
+	testEnsureFpathInZshrcHelper(t, "add fpath to empty zshrc", "", "fpath=")
+	testEnsureFpathInZshrcHelper(t, "add fpath to existing content", "export PATH=/usr/local/bin:$PATH\n", "fpath=")
+	testEnsureFpathInZshrcHelper(t, "already contains fpath", "fpath=(/custom/path $fpath)\n", "/custom/path")
+}
+
+func TestEnsureFpathInZshrcNotFound(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "test-zshrc-notfound-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	nonexistentPath := filepath.Join(tmpDir, "nonexistent", ".zshrc")
+	compDir := filepath.Join(tmpDir, ".zsh", "completions")
+
+	err = ensureFpathInZshrc(nonexistentPath, compDir)
+	if err == nil {
+		t.Error("expected error for nonexistent file, got nil")
+	}
+
+	if !strings.Contains(err.Error(), "~/.zshrc not found") {
+		t.Errorf("expected error to mention ~/.zshrc not found, got: %v", err)
+	}
+}
+
+func testEnsureSourceInBashrcHelper(t *testing.T, content, completionFile, shouldContain string) {
+	t.Helper()
+
+	tmpDir, err := os.MkdirTemp("", "test-bashrc-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	bashrcPath := filepath.Join(tmpDir, ".bashrc")
+	if err := os.WriteFile(bashrcPath, []byte(content), 0o644); err != nil {
+		t.Fatalf("failed to write bashrc: %v", err)
+	}
+
+	compFile := filepath.Join(tmpDir, completionFile)
+	if err := ensureSourceInBashrc(bashrcPath, compFile); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	fileContent, err := os.ReadFile(bashrcPath)
+	if err != nil {
+		t.Fatalf("failed to read bashrc: %v", err)
+	}
+
+	if !strings.Contains(string(fileContent), shouldContain) {
+		t.Errorf("expected content to contain %q, got: %s", shouldContain, string(fileContent))
+	}
+}
+
+func TestEnsureSourceInBashrc(t *testing.T) {
+	testEnsureSourceInBashrcHelper(t, "", ".bash_completions/dr", "source")
+	testEnsureSourceInBashrcHelper(t, "export PATH=/usr/local/bin:$PATH\n", ".bash_completions/dr", "source")
+	testEnsureSourceInBashrcHelper(t, "[ -f /existing/completion ] && source /existing/completion\n", "/existing/completion", "/existing/completion")
+}
+
+func TestEnsureSourceInBashrcNotFound(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "test-bashrc-notfound-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	nonexistentPath := filepath.Join(tmpDir, "nonexistent", ".bashrc")
+	completionFile := filepath.Join(tmpDir, ".bash_completions", "dr")
+
+	err = ensureSourceInBashrc(nonexistentPath, completionFile)
+	if err == nil {
+		t.Error("expected error for nonexistent file, got nil")
+	}
+
+	if !strings.Contains(err.Error(), "~/.bashrc not found") {
+		t.Errorf("expected error to mention ~/.bashrc not found, got: %v", err)
 	}
 }
 
