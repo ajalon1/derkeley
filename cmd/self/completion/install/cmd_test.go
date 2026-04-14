@@ -415,7 +415,7 @@ func TestEnsureFpathInZshrcNotFound(t *testing.T) {
 	}
 }
 
-func testEnsureSourceInBashrcHelper(t *testing.T, compFileInTmpDir, expectedInFile string, expectIdempotent bool) {
+func testEnsureSourceInBashrcHelper(t *testing.T, compFileInTmpDir, initialContent, expectedInFile string, expectIdempotent bool) {
 	t.Helper()
 
 	tmpDir, err := os.MkdirTemp("", "test-bashrc-*")
@@ -427,9 +427,9 @@ func testEnsureSourceInBashrcHelper(t *testing.T, compFileInTmpDir, expectedInFi
 	bashrcPath := filepath.Join(tmpDir, ".bashrc")
 	compFile := filepath.Join(tmpDir, compFileInTmpDir)
 
-	// For idempotent test, pre-populate bashrc with the expected source line
-	var initialContent string
+	// Pre-populate bashrc with initial content if provided
 	if expectIdempotent {
+		// For idempotent test, include the source line that should already exist
 		initialContent = fmt.Sprintf("[ -f %s ] && source %s\n", compFile, compFile)
 	}
 
@@ -462,13 +462,13 @@ func testEnsureSourceInBashrcHelper(t *testing.T, compFileInTmpDir, expectedInFi
 
 func TestEnsureSourceInBashrc(t *testing.T) {
 	t.Run("add source to empty bashrc", func(t *testing.T) {
-		testEnsureSourceInBashrcHelper(t, ".bash_completions/dr", "source", false)
+		testEnsureSourceInBashrcHelper(t, ".bash_completions/dr", "", "source", false)
 	})
 	t.Run("add source to bashrc with existing content", func(t *testing.T) {
-		testEnsureSourceInBashrcHelper(t, ".bash_completions/dr", "source", false)
+		testEnsureSourceInBashrcHelper(t, ".bash_completions/dr", "export PATH=/usr/local/bin:$PATH\n", "source", false)
 	})
 	t.Run("already contains source line", func(t *testing.T) {
-		testEnsureSourceInBashrcHelper(t, ".bash_completions/dr", "source", true)
+		testEnsureSourceInBashrcHelper(t, ".bash_completions/dr", "", "source", true)
 	})
 }
 
