@@ -30,7 +30,8 @@ jobs:
         with:
           filters: |
             completion:
-              - 'cmd/completion/**'
+              - 'cmd/self/completion/**'
+              - 'goreleaser.yaml'
             dotenv:
               - 'cmd/dotenv/**'
             templates:
