@@ -82,7 +82,7 @@ func TestEnabled(t *testing.T) {
 	}
 }
 
-func TestGatedCommand(t *testing.T) {
+func TestCommandAdder(t *testing.T) {
 	tests := []struct {
 		name               string
 		setupCommands      func() []*cobra.Command
@@ -128,6 +128,26 @@ func TestGatedCommand(t *testing.T) {
 			enabledFeatures:  []string{"MY_FEATURE"},
 			expectedCmdNames: []string{"ungated", "gated"},
 		},
+		{
+			name: "handles nested gated commands with CommandAdder wrapper",
+			setupCommands: func() []*cobra.Command {
+				parent := &cobra.Command{Use: "parent"}
+
+				gatedChild := &cobra.Command{Use: "gated-child"}
+				SetGate(gatedChild, "child-feature")
+
+				parentAdder := &CommandAdder{Command: parent}
+				parentAdder.AddCommand(
+					&cobra.Command{Use: "ungated-child"},
+					gatedChild,
+				)
+
+				return []*cobra.Command{parent}
+			},
+			enabledFeatures:    []string{},
+			expectedCmdNames:   []string{"parent"},
+			expectedNotPresent: []string{"gated-child"},
+		},
 	}
 
 	for _, tt := range tests {
@@ -137,7 +157,7 @@ func TestGatedCommand(t *testing.T) {
 				t.Setenv("DATAROBOT_CLI_FEATURES_"+feature, "true")
 			}
 
-			root := &GatedCommand{
+			root := &CommandAdder{
 				Command: &cobra.Command{Use: "root"},
 			}
 			root.AddCommand(tt.setupCommands()...)

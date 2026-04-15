@@ -48,8 +48,9 @@ var configFilePath string
 // telemetryClientKey is used to store the telemetry client in context
 type telemetryClientKey struct{}
 
-// RootCmd represents the base command when called without any subcommands
-var RootCmd = &features.GatedCommand{
+// RootCmd represents the base command when called without any subcommands.
+// It uses CommandAdder to intelligently filter child commands based on feature gates.
+var RootCmd = &features.CommandAdder{
 	Command: &cobra.Command{
 		Use:     internalVersion.CliName,
 		Version: internalVersion.Version,
