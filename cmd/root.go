@@ -31,7 +31,9 @@ import (
 	"github.com/datarobot/cli/cmd/task"
 	"github.com/datarobot/cli/cmd/task/run"
 	"github.com/datarobot/cli/cmd/templates"
+	"github.com/datarobot/cli/cmd/workload"
 	"github.com/datarobot/cli/internal/config"
+	"github.com/datarobot/cli/internal/features"
 	"github.com/datarobot/cli/internal/log"
 	internalPlugin "github.com/datarobot/cli/internal/plugin"
 	"github.com/datarobot/cli/internal/telemetry"
@@ -168,8 +170,12 @@ func init() {
 		start.Cmd(),
 		task.Cmd(),
 		templates.Cmd(),
+		workload.Cmd(),
 		plugin.Cmd(),
 	)
+
+	// Remove commands that are gated behind disabled features
+	features.RemoveDisabledCommands(RootCmd)
 
 	// Discover and register plugin commands
 	plugin.RegisterPluginCommands(RootCmd)
