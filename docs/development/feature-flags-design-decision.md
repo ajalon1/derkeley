@@ -7,43 +7,42 @@
 
 ## Problem Statement
 
-The DataRobot CLI is expanding with new features (e.g., `workload` command) that need to remain hidden from end users until they're ready for release. The current approach requires either:
+The DataRobot CLI is expanding with new features (e.g., `workload` command) that need to remain hidden from end users until they're ready for release. The options were:
 
-1. **Not registering commands at all** — requires manual registration/deregistration at release time (error-prone)
-2. **Checking feature gates in command Run() logic** — scattered logic, inconsistent behavior across commands
-3. **Pre-filtering commands at startup** — declarative and reusable
+1. **Not registering commands at all** — requires manual code changes at release time (error-prone)
+2. **Checking feature gates in command `Run()` logic** — scattered guards, inconsistent UX (command appears in help but errors when run)
+3. **Filtering commands at registration time** — declarative and reusable
 
-We need a **scalable, maintainable, and zero-boilerplate mechanism** that allows developers to easily gate any command without modifying root initialization logic.
+We need a mechanism that lets developers gate any command with minimal boilerplate, without touching root initialization logic for each new feature.
 
 ## Decision
 
-Implement an **annotation-based feature gate system** using Cobra's built-in `Annotations` map and a `CommandAdder` wrapper that filters at registration time.
+Implement an **annotation-based feature gate system** using Cobra's built-in `Annotations` map and a `CommandAdder` wrapper that filters commands at registration time.
 
 ### Rationale
 
 | Approach | Pros | Cons |
 |----------|------|------|
-| **Annotations + Filter (Chosen)** | Zero boilerplate; declarative; recursive; works at any depth; no per-command guards | Filtering happens at init time (not runtime); env-var-only (for now) |
+| **Annotations + CommandAdder (Chosen)** | Zero boilerplate; declarative; single enforcement point; no per-command guards | Env-var-only (for now); filtering happens at init, not runtime |
 | Manual registration | Simple; explicit | Error-prone; requires code changes per feature; doesn't scale |
 | Per-command logic | Flexible; runtime control | Scattered logic; hard to maintain; inconsistent UX |
 | External feature gate service | Powerful; centralized | Overkill for CLI; adds infrastructure dependency; complex setup |
 
 **Why annotations?**
 - Already part of Cobra; zero new dependencies
-- Declarative—developers declare what they're building, not *how* to gate it
-- Searchable—easy to find all gated commands (`grep -r "feature-gate"`)
-- Future-proof—can add more metadata (e.g., rollout %, targeting) without code changes
+- Declarative — developers declare what they're building, not *how* to gate it
+- Searchable — easy to find all gated commands (`grep -r "feature-gate"`)
 
 **Why `CommandAdder` at registration time?**
 - Commands with disabled gates never enter the tree — no post-hoc cleanup needed
 - Single enforcement point (`AddCommand`) rather than a separate traversal pass
 - Implicit child removal — if the parent is gated and not added, its children never exist
-- For nested gated subcommands, the parent command wraps itself with `CommandAdder` the same way
+- The same pattern composes for nested gated subcommands: wrap the parent with `CommandAdder` too
 
 **Why env-var-only initially?**
-- Simpler to implement (no Viper dependency during init)
-- Sufficient for development workflows
-- Config file support can be added later (TODO in code) without changing the public API
+- Feature gating runs in `init()`, before Viper configuration is loaded
+- Env vars require no initialization order changes
+- Config file support can be added later without changing the public API
 
 ## Design
 
@@ -57,7 +56,7 @@ Implement an **annotation-based feature gate system** using Cobra's built-in `An
 │                                 │
 │ RootCmd.AddCommand(...)         │
 │   - auth, component, dotenv...  │
-│   - workload (gated annotation) │← filtered here if disabled
+│   - workload (gated annotation) │← filtered here if feature is off
 │   - plugin, etc.                │
 └─────────────────────────────────┘
          ↓
@@ -70,24 +69,32 @@ Implement an **annotation-based feature gate system** using Cobra's built-in `An
 
 ### Key Components
 
-#### 1. Feature Flag Package (`internal/features/` + `internal/cli/`)
+#### `internal/features/`
 
 ```go
-// internal/features/features.go
 const AnnotationKey = "feature-gate"
 
+// Enabled checks DATAROBOT_CLI_FEATURE_<NAME>=true|1
 func Enabled(name string) bool {
-    envKey := "DATAROBOT_CLI_FEATURE_" + toUpperWithUnderscores(name)
-    return os.Getenv(envKey) == "true" || os.Getenv(envKey) == "1"
+    envKey := "DATAROBOT_CLI_FEATURE_" + strings.ToUpper(strings.ReplaceAll(name, "-", "_"))
+    v := os.Getenv(envKey)
+    return strings.EqualFold(v, "true") || v == "1"
 }
 
-// internal/cli/command.go
+// SetGate attaches a feature gate annotation to a command.
+func SetGate(cmd *cobra.Command, name string) { ... }
+```
+
+#### `internal/cli/`
+
+```go
+// CommandAdder wraps cobra.Command and filters gated children at AddCommand time.
 type CommandAdder struct{ *cobra.Command }
 
 func (gc *CommandAdder) AddCommand(cmds ...*cobra.Command) {
     for _, cmd := range cmds {
         if gate, ok := cmd.Annotations[features.AnnotationKey]; ok && !features.Enabled(gate) {
-            continue  // never added to the tree
+            continue // never added to the tree
         }
         gc.Command.AddCommand(cmd)
     }
@@ -97,58 +104,43 @@ func (gc *CommandAdder) AddCommand(cmds ...*cobra.Command) {
 **Why this design:**
 - `Enabled()` is a pure function (testable, no side effects)
 - `CommandAdder` filters at registration time — disabled commands never enter the tree
-- No post-hoc traversal or removal pass needed
 - No per-command guards or `if` statements scattered through the codebase
 
-#### 2. Command Annotation
+#### Command annotation
 
 ```go
 func Cmd() *cobra.Command {
-    return &cobra.Command{
-        Use:     "workload",
-        Annotations: map[string]string{
-            features.AnnotationKey: "workload",
-        },
+    cmd := &cobra.Command{
+        Use:   "workload",
+        Short: "Workload management commands",
     }
+    features.SetGate(cmd, "workload")
+    return cmd
 }
 ```
 
-**Developer experience:**
-- One-line annotation per gated command
-- No imports of feature gate logic in command files (except for `AnnotationKey`)
-- Same registration pattern as ungated commands
+#### Activation
 
-#### 3. Activation
-
-**Environment Variable:**
 ```bash
+# Feature name → env var
+# "workload"    → DATAROBOT_CLI_FEATURE_WORKLOAD
+# "my-feature"  → DATAROBOT_CLI_FEATURE_MY_FEATURE
+
 DATAROBOT_CLI_FEATURE_WORKLOAD=true dr workload --help
 ```
-
-**Naming convention:**
-- Feature: `"workload"` → Env var: `DATAROBOT_CLI_FEATURE_WORKLOAD`
-- Feature: `"my-feature"` → Env var: `DATAROBOT_CLI_FEATURE_MY_FEATURE`
-- Hyphens in feature names become underscores in env vars
 
 ## Alternatives Considered
 
 ### 1. External Feature Flag Service (e.g., GO Feature Flag, LaunchDarkly)
 
 **Why rejected:**
-- Overkill for a CLI tool where deployment = shipping the binary
-- Adds infrastructure dependency (relay server, feature gate service)
-- Requires configuration file or network calls on every invocation
-- Introduces latency and potential failure modes (network timeouts)
-- CLI is single-user; no need for gradual rollouts, targeting, A/B testing
-
-**When to revisit:**
-- If DataRobot moves to a SaaS model where CLI behavior is centrally controlled
-- If feature gates need to be synchronized across multiple client tools
+- Overkill for a CLI; deployment = shipping the binary
+- Adds infrastructure dependency and potential network failure modes
+- No need for gradual rollouts, targeting, or A/B testing in a single-user CLI
 
 ### 2. Command-Level Guard Logic
 
 ```go
-// In each command's Run() function
 if !features.Enabled("workload") {
     return fmt.Errorf("workload command not yet available")
 }
@@ -156,14 +148,13 @@ if !features.Enabled("workload") {
 
 **Why rejected:**
 - Scattered logic across many command files
-- Inconsistent UX (command appears in help but errors when run)
-- Commands still registered (completion includes them)
-- Harder to maintain and audit
+- Command still appears in help text even when disabled
+- Tab completion includes disabled commands
 
-### 3. Separate Register/Unregister Helper
+### 3. Conditional `AddCommand` Helper
 
 ```go
-func registerIfEnabled(parent *cobra.Command, name string, cmd *cobra.Command) {
+func addIfEnabled(parent *cobra.Command, name string, cmd *cobra.Command) {
     if features.Enabled(name) {
         parent.AddCommand(cmd)
     }
@@ -171,124 +162,38 @@ func registerIfEnabled(parent *cobra.Command, name string, cmd *cobra.Command) {
 ```
 
 **Why rejected:**
-- Still requires `if` statements for each gated command in root.go
-- More boilerplate than annotations
-- Mixing declarative (command definition) with imperative (conditional registration)
+- Still requires a call-site change in `root.go` per gated command
+- The feature name is specified twice (helper call + command definition)
+- `CommandAdder` achieves the same with zero extra call-site code
 
 ### 4. Config File Only (No Env Vars)
 
 **Why rejected:**
-- Requires Viper to be initialized before command registration
-- Viper initialization happens in `PersistentPreRunE`, after `init()`
-- Would require restructuring initialization order (risky, affects telemetry, logging, etc.)
-- Env vars are simpler for developers and CI/CD systems
+- Viper initializes in `PersistentPreRunE`, after `init()` where commands are registered
+- Would require restructuring initialization order
 
-**Accepted as future enhancement:**
-- Config file support can be added once Viper is available
-- No API changes needed; just add `viper.GetBool("features." + name)` fallback in `Enabled()`
+**Accepted as future enhancement:** env var support now, config file support later via a `Provider` interface already in place.
 
-## Implementation Plan
+## Testing
 
-### Phase 1: Core System (Completed)
-- [x] Create `internal/features/` package with `Enabled()`
-- [x] Create `internal/cli/` package with `CommandAdder`
-- [x] Add unit tests (100% coverage)
-- [x] Integrate into `cmd/root.go`
-- [x] Create placeholder `cmd/workload/` command with annotation
-- [x] Add integration test to verify filtering behavior
-- [x] Document in developer guide
-
-### Phase 2: Expand Usage (Future)
-- [ ] Gate additional commands as they move through development
-- [ ] Gather feedback from developers on annotation syntax and env var naming
-
-### Phase 3: Config File Support (Future)
-- [ ] Add Viper fallback to `Enabled()` function
-- [ ] Document config file syntax
-- [ ] Update tests to cover both env var and config file paths
-
-### Phase 4: Monitoring & Telemetry (Future)
-- [ ] Track which features are enabled at runtime (for analytics)
-- [ ] Emit events when features are toggled
-
-## Testing Strategy
-
-### Unit Tests
 - ✅ `TestEnabled()` — env var true/1/false/unset (`internal/features/features_test.go`)
-- ✅ `TestCommandAdder()` — top-level and nested command filtering (`internal/cli/command_test.go`)
+- ✅ `TestCommandAdder()` — top-level and nested filtering (`internal/cli/command_test.go`)
+- ✅ `TestWorkloadCommandNotPresentByDefault()` — integration check (`cmd/root_test.go`)
 
-### Integration Tests (`cmd/root_test.go`)
-- ✅ `TestWorkloadCommandNotPresentByDefault()` — verifies workload is hidden without flag
+## Security
 
-### Manual Testing
-```bash
-# Feature disabled (default)
-dr --help               # workload not shown
-dr workload             # "unknown command" error
-
-# Feature enabled
-DATAROBOT_CLI_FEATURE_WORKLOAD=true dr --help      # workload shown
-DATAROBOT_CLI_FEATURE_WORKLOAD=true dr workload    # command available
-```
-
-## Security Considerations
-
-### Non-Goals
-Feature flags are **not** an access control mechanism. Any user with shell access can enable features via env vars.
-
-### Actual Purpose
-Hide unfinished features from casual discovery and prevent accidental use.
-
-### Security Implications
-- ✅ No secrets exposed (feature names are not sensitive)
-- ✅ No network surface (env vars only)
-- ✅ No code execution risk (simple boolean check)
-- ✅ Users can still run `dr workload` if they know to set env var (intentional)
-
-## Maintenance & Operations
-
-### Adding a New Gated Command
-1. Create `cmd/<name>/cmd.go` with annotation: `features.AnnotationKey: "<name>"`
-2. Add `<name>.Cmd()` to `RootCmd.AddCommand()` block
-3. Done. No other changes to root.go.
-
-### Releasing a Feature (GA)
-1. Delete the `Annotations` map from the command
-2. Commit and merge
-3. Feature is now permanent; flag is obsolete
-
-### Monitoring Enabled Features
-- Check CI/CD logs for `DATAROBOT_CLI_FEATURE_*` env vars
-- Search codebase for `Annotations.*feature-gate` to find all gated commands
-
-## Success Criteria
-
-- ✅ Feature flags prevent workload command from appearing in help by default
-- ✅ Feature flags allow workload command to be activated via env var
-- ✅ System works at any command depth (top-level and nested)
-- ✅ Adding new gated commands requires minimal code changes (one annotation line)
-- ✅ All tests pass with race detection
-- ✅ All linting passes
-- ✅ Documentation is clear and actionable
-- ✅ No external dependencies added
+Feature gates are **not** an access control mechanism. Any user with shell access can enable a disabled feature via env var. They exist solely to prevent casual discovery of unfinished features.
 
 ## Risks & Mitigations
 
-| Risk | Likelihood | Impact | Mitigation |
-|------|------------|--------|-----------|
-| Developers forget to add annotation | High | Gated feature becomes visible by accident | Code review checklist; template in docs |
-| Config file support blocked by init order | Medium | Users can't store flags in drconfig.yaml | Documented as known limitation; planned for future release |
-| Env var naming inconsistency | Low | Confusion about how to enable features | Convention documented; linting could verify in future |
-| Performance impact of recursive traversal | Very Low | Commands take longer to initialize | Command count is small (~15); trivial performance impact |
+| Risk | Likelihood | Mitigation |
+|------|------------|-----------|
+| Developer forgets annotation | High | Code review; pattern documented in AGENTS.md |
+| Config file support blocked by init order | Medium | Documented limitation; `Provider` interface enables future extension |
+| Env var naming inconsistency | Low | Convention documented; `SetGate` enforces the annotation key |
 
 ## References
 
 - [Cobra Command Documentation](https://pkg.go.dev/github.com/spf13/cobra)
-- [DataRobot CLI Architecture](../structure.md)
-- [Developer Guide: Feature Flags](./feature-gates.md)
-
-## Approval
-
-- **Decision Made:** 2025-04-15
-- **Approved By:** Product & Engineering
-- **Implemented By:** Factory Droid
+- [Developer Guide: Feature Flags](./feature-flags.md)
+- [DataRobot CLI Architecture](./structure.md)
