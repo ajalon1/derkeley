@@ -22,6 +22,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type mockProvider struct {
+	enabledFeatures map[string]bool
+}
+
+func (m *mockProvider) IsEnabled(name string) bool {
+	return m.enabledFeatures[name]
+}
+
 func TestEnabled(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -67,6 +75,11 @@ func TestEnabled(t *testing.T) {
 		},
 	}
 
+	// Save original provider and restore after test
+	originalProvider := provider
+
+	defer func() { SetProvider(originalProvider) }()
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Compute the env key (hyphens become underscores)
@@ -80,6 +93,38 @@ func TestEnabled(t *testing.T) {
 			assert.Equal(t, tt.expectedBool, result)
 		})
 	}
+}
+
+func TestSetProvider(t *testing.T) {
+	originalProvider := provider
+
+	defer func() { SetProvider(originalProvider) }()
+
+	// Set up mock provider
+	mockProv := &mockProvider{
+		enabledFeatures: map[string]bool{
+			"enabled-feature":  true,
+			"disabled-feature": false,
+		},
+	}
+	SetProvider(mockProv)
+
+	// Test that Enabled uses the new provider
+	assert.True(t, Enabled("enabled-feature"))
+	assert.False(t, Enabled("disabled-feature"))
+	assert.False(t, Enabled("unknown-feature"))
+}
+
+func TestSetProviderNil(t *testing.T) {
+	originalProvider := provider
+
+	defer func() { SetProvider(originalProvider) }()
+
+	// SetProvider should ignore nil values
+	SetProvider(nil)
+
+	// Verify the original provider is still in use
+	assert.Same(t, originalProvider, provider)
 }
 
 func TestSetGate(t *testing.T) {

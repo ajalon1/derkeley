@@ -23,6 +23,51 @@ import (
 
 const AnnotationKey = "feature-gate"
 
+// Provider defines the interface for reading feature gate values.
+// Implementations can read from environment variables, config files, or other sources.
+// This allows for easy migration to different feature flag systems without changing
+// the rest of the codebase.
+type Provider interface {
+	IsEnabled(name string) bool
+}
+
+// envVarProvider reads feature gates from environment variables.
+type envVarProvider struct{}
+
+// IsEnabled checks if a feature is enabled via environment variable.
+// Feature names are converted to uppercase with underscores replacing hyphens.
+// Format: DATAROBOT_CLI_FEATURE_<NAME> (e.g., DATAROBOT_CLI_FEATURE_WORKLOAD)
+func (p *envVarProvider) IsEnabled(name string) bool {
+	envKey := "DATAROBOT_CLI_FEATURE_" + strings.ToUpper(strings.ReplaceAll(name, "-", "_"))
+	if v := os.Getenv(envKey); v != "" {
+		return strings.EqualFold(v, "true") || v == "1"
+	}
+
+	return false
+}
+
+// provider is the global feature gate provider instance.
+// Default is environment variable provider.
+// Can be swapped for testing or to support other sources (e.g., config files, remote services).
+var provider Provider = &envVarProvider{}
+
+// SetProvider sets the global feature gate provider.
+// Primarily useful for testing with custom implementations.
+func SetProvider(p Provider) {
+	if p != nil {
+		provider = p
+	}
+}
+
+// Enabled checks if a feature is enabled using the current provider.
+// Currently uses environment variables; can be extended to support config files
+// or other sources by implementing the Provider interface.
+// TODO: Support config file (drconfig.yaml) feature gates once
+// we move filtering to PersistentPreRunE or read config independently.
+func Enabled(name string) bool {
+	return provider.IsEnabled(name)
+}
+
 // SetGate adds a feature gate annotation to a command, preserving any existing annotations.
 func SetGate(cmd *cobra.Command, name string) {
 	if cmd.Annotations == nil {
@@ -30,18 +75,4 @@ func SetGate(cmd *cobra.Command, name string) {
 	}
 
 	cmd.Annotations[AnnotationKey] = name
-}
-
-// Enabled checks env var DATAROBOT_CLI_FEATURE_<NAME>.
-// Currently only env vars are supported; config file support requires
-// Viper initialization which happens after command registration.
-// TODO: Support config file (drconfig.yaml) feature gates once
-// we move filtering to PersistentPreRunE or read config independently.
-func Enabled(name string) bool {
-	envKey := "DATAROBOT_CLI_FEATURE_" + strings.ToUpper(strings.ReplaceAll(name, "-", "_"))
-	if v := os.Getenv(envKey); v != "" {
-		return strings.EqualFold(v, "true") || v == "1"
-	}
-
-	return false
 }
