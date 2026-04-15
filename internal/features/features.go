@@ -23,27 +23,6 @@ import (
 
 const AnnotationKey = "feature-gate"
 
-// CommandAdder wraps cobra.Command and overrides AddCommand to filter gated commands.
-// It allows commands with disabled feature gates to never be added to the command tree.
-// This wrapper clarifies that the root command itself is not gated—it just intelligently
-// adds its children, filtering out those with disabled feature gates.
-type CommandAdder struct {
-	*cobra.Command
-}
-
-// AddCommand adds commands to this command, skipping any that have a disabled feature gate.
-// Gated commands (those with a feature-gate annotation) are filtered at registration time,
-// never making it into the command tree if their feature is not enabled.
-func (ca *CommandAdder) AddCommand(cmds ...*cobra.Command) {
-	for _, cmd := range cmds {
-		if gate, ok := cmd.Annotations[AnnotationKey]; ok && !Enabled(gate) {
-			continue
-		}
-
-		ca.Command.AddCommand(cmd)
-	}
-}
-
 // SetGate adds a feature gate annotation to a command, preserving any existing annotations.
 func SetGate(cmd *cobra.Command, name string) {
 	if cmd.Annotations == nil {
@@ -65,16 +44,4 @@ func Enabled(name string) bool {
 	}
 
 	return false
-}
-
-// RemoveDisabledCommands recursively removes any subcommands
-// that have a "feature-gate" annotation whose feature is not enabled.
-func RemoveDisabledCommands(parent *cobra.Command) {
-	for _, cmd := range parent.Commands() {
-		if gate, ok := cmd.Annotations[AnnotationKey]; ok && !Enabled(gate) {
-			parent.RemoveCommand(cmd)
-		} else {
-			RemoveDisabledCommands(cmd)
-		}
-	}
 }

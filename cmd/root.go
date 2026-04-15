@@ -32,8 +32,8 @@ import (
 	"github.com/datarobot/cli/cmd/task/run"
 	"github.com/datarobot/cli/cmd/templates"
 	"github.com/datarobot/cli/cmd/workload"
+	"github.com/datarobot/cli/internal/cli"
 	"github.com/datarobot/cli/internal/config"
-	"github.com/datarobot/cli/internal/features"
 	"github.com/datarobot/cli/internal/log"
 	internalPlugin "github.com/datarobot/cli/internal/plugin"
 	"github.com/datarobot/cli/internal/telemetry"
@@ -50,7 +50,7 @@ type telemetryClientKey struct{}
 
 // RootCmd represents the base command when called without any subcommands.
 // It uses CommandAdder to intelligently filter child commands based on feature gates.
-var RootCmd = &features.CommandAdder{
+var RootCmd = &cli.CommandAdder{
 	Command: &cobra.Command{
 		Use:     internalVersion.CliName,
 		Version: internalVersion.Version,
@@ -163,7 +163,7 @@ func init() {
 	// Add commands here to ensure that they are available to users.
 	// Be sure to set the command's GroupID field appropriately;
 	// otherwise the command will be added under 'Additional Commands'.
-	// Commands with disabled feature gates are automatically filtered by GatedCommand.
+	// Commands with disabled feature gates are automatically filtered by cli.CommandAdder.
 	RootCmd.AddCommand(
 		auth.Cmd(),
 		component.Cmd(),
