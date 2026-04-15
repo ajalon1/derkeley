@@ -99,9 +99,9 @@ When upgrading the Go version in `go.mod`, you may need to update golangci-lint 
 
 The `GOLANGCI_LINT_VERSION` is pinned to ensure reproducible builds across all development environments. The binary is installed as a standalone pre-built artifact, not via `go install`, so version mismatches between your project's Go version and golangci-lint's internal Go version are handled automatically.
 
-## Feature Flags
+## Feature Gates
 
-Feature flags allow commands to be hidden until ready for release. For comprehensive documentation including implementation details, see [docs/development/feature-flags.md](docs/development/feature-flags.md).
+Feature gates allow commands to be hidden until ready for release. For comprehensive documentation including implementation details, see [docs/development/feature-gates.md](docs/development/feature-gates.md).
 
 **Quick reference:**
 - Gated commands use `Annotations: map[string]string{features.AnnotationKey: "feature-name"}`

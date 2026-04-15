@@ -83,7 +83,7 @@ That's it. The `RemoveDisabledCommands(RootCmd)` call already in `init()` will h
 
 ## Gating Subcommands
 
-The feature flag system works recursively, so you can gate subcommands at any depth:
+The feature gate system works recursively, so you can gate subcommands at any depth:
 
 ```go
 subCmd := &cobra.Command{

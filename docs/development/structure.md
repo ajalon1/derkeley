@@ -18,10 +18,12 @@ cli/
 │   └── templates/           # Template management
 ├── internal/                # Private application code
 │   ├── assets/              # Embedded assets
+│   ├── cli/                 # CLI infrastructure (GatedCommand, etc.)
 │   ├── config/              # Configuration management
 │   ├── copier/              # Template copying utilities
 │   ├── drapi/               # DataRobot API client
 │   ├── envbuilder/          # Environment builder
+│   ├── features/            # Feature flag system
 │   ├── misc/                # Miscellaneous utilities
 │   ├── repo/                # Repository detection
 │   ├── shell/               # Shell utilities
@@ -91,6 +93,23 @@ An environment configuration builder that:
 - Validates configuration
 - Generates `.env` files
 - Provides interactive prompts
+
+#### cli/
+
+CLI infrastructure and utilities:
+
+- `GatedCommand`: Wrapper for Cobra commands that filters subcommands based on feature gates
+- `RemoveDisabledCommands`: Recursively removes disabled gated commands from the command tree
+- Used by the root command to intelligently register commands based on feature availability
+
+#### features/
+
+Feature flag system:
+
+- `SetGate`: Marks a command with a feature gate annotation
+- `Enabled`: Checks if a feature is enabled via environment variables
+- `AnnotationKey`: The key used for feature gate annotations
+- Environment variable format: `DATAROBOT_CLI_FEATURES_<NAME>` (e.g., `DATAROBOT_CLI_FEATURES_WORKLOAD=true`)
 
 #### task/
 

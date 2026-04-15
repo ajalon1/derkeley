@@ -120,5 +120,5 @@ func TestWorkloadCommandNotPresentByDefault(t *testing.T) {
 		}
 	}
 
-	assert.False(t, found, "workload command should not be present when feature flag is not enabled")
+	assert.False(t, found, "workload command should not be present when feature gate is not enabled")
 }

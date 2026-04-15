@@ -10,14 +10,14 @@
 The DataRobot CLI is expanding with new features (e.g., `workload` command) that need to remain hidden from end users until they're ready for release. The current approach requires either:
 
 1. **Not registering commands at all** — requires manual registration/deregistration at release time (error-prone)
-2. **Checking feature flags in command Run() logic** — scattered logic, inconsistent behavior across commands
+2. **Checking feature gates in command Run() logic** — scattered logic, inconsistent behavior across commands
 3. **Pre-filtering commands at startup** — declarative and reusable
 
 We need a **scalable, maintainable, and zero-boilerplate mechanism** that allows developers to easily gate any command without modifying root initialization logic.
 
 ## Decision
 
-Implement an **annotation-based feature flag system** using Cobra's built-in `Annotations` map and a single recursive filtering function.
+Implement an **annotation-based feature gate system** using Cobra's built-in `Annotations` map and a single recursive filtering function.
 
 ### Rationale
 
@@ -26,7 +26,7 @@ Implement an **annotation-based feature flag system** using Cobra's built-in `An
 | **Annotations + Filter (Chosen)** | Zero boilerplate; declarative; recursive; works at any depth; no per-command guards | Filtering happens at init time (not runtime); env-var-only (for now) |
 | Manual registration | Simple; explicit | Error-prone; requires code changes per feature; doesn't scale |
 | Per-command logic | Flexible; runtime control | Scattered logic; hard to maintain; inconsistent UX |
-| External feature flag service | Powerful; centralized | Overkill for CLI; adds infrastructure dependency; complex setup |
+| External feature gate service | Powerful; centralized | Overkill for CLI; adds infrastructure dependency; complex setup |
 
 **Why annotations?**
 - Already part of Cobra; zero new dependencies
@@ -114,7 +114,7 @@ func Cmd() *cobra.Command {
 
 **Developer experience:**
 - One-line annotation per gated command
-- No imports of feature flag logic in command files (except for `AnnotationKey`)
+- No imports of feature gate logic in command files (except for `AnnotationKey`)
 - Same registration pattern as ungated commands
 
 #### 3. Activation
@@ -135,14 +135,14 @@ DATAROBOT_CLI_FEATURES_WORKLOAD=true dr workload --help
 
 **Why rejected:**
 - Overkill for a CLI tool where deployment = shipping the binary
-- Adds infrastructure dependency (relay server, feature flag service)
+- Adds infrastructure dependency (relay server, feature gate service)
 - Requires configuration file or network calls on every invocation
 - Introduces latency and potential failure modes (network timeouts)
 - CLI is single-user; no need for gradual rollouts, targeting, A/B testing
 
 **When to revisit:**
 - If DataRobot moves to a SaaS model where CLI behavior is centrally controlled
-- If feature flags need to be synchronized across multiple client tools
+- If feature gates need to be synchronized across multiple client tools
 
 ### 2. Command-Level Guard Logic
 
@@ -283,7 +283,7 @@ Hide unfinished features from casual discovery and prevent accidental use.
 
 - [Cobra Command Documentation](https://pkg.go.dev/github.com/spf13/cobra)
 - [DataRobot CLI Architecture](../structure.md)
-- [Developer Guide: Feature Flags](./feature-flags.md)
+- [Developer Guide: Feature Flags](./feature-gates.md)
 
 ## Approval
 
