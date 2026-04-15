@@ -178,33 +178,9 @@ func TestRemoveDisabledCommands(t *testing.T) {
 
 				return parent
 			},
-			enabledFeatures:     []string{},
-			expectedSubcommands: []string{}, // Will be set in test
+			enabledFeatures:     []string{"TEST_FEATURE"},
+			expectedSubcommands: []string{"gated"},
 			expectedNotPresent:  []string{},
-		},
-		{
-			name: "removes nested gated command",
-			setupCmd: func() *cobra.Command {
-				root := &cobra.Command{Use: "root"}
-
-				parent := &cobra.Command{Use: "parent"}
-				root.AddCommand(parent)
-
-				enabled := &cobra.Command{Use: "enabled"}
-				parent.AddCommand(enabled)
-
-				gated := &cobra.Command{
-					Use: "gated",
-					Annotations: map[string]string{
-						features.AnnotationKey: "nested-feature",
-					},
-				}
-				parent.AddCommand(gated)
-
-				return root
-			},
-			enabledFeatures:    []string{},
-			expectedNotPresent: []string{"gated"},
 		},
 	}
 
@@ -247,4 +223,45 @@ func TestRemoveDisabledCommands(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRemoveDisabledCommandsNested(t *testing.T) {
+	root := &cobra.Command{Use: "root"}
+
+	parent := &cobra.Command{Use: "parent"}
+	root.AddCommand(parent)
+
+	enabled := &cobra.Command{Use: "enabled"}
+	parent.AddCommand(enabled)
+
+	gated := &cobra.Command{
+		Use: "gated",
+		Annotations: map[string]string{
+			features.AnnotationKey: "nested-feature",
+		},
+	}
+	parent.AddCommand(gated)
+
+	RemoveDisabledCommands(root)
+
+	// Verify parent is still present
+	parentCmd := root.Commands()[0]
+	assert.Equal(t, "parent", parentCmd.Name())
+
+	// Verify gated command was removed from parent (second level)
+	foundGated := false
+	foundEnabled := false
+
+	for _, cmd := range parentCmd.Commands() {
+		if cmd.Name() == "gated" {
+			foundGated = true
+		}
+
+		if cmd.Name() == "enabled" {
+			foundEnabled = true
+		}
+	}
+
+	assert.False(t, foundGated, "gated command should be removed from parent")
+	assert.True(t, foundEnabled, "enabled command should remain in parent")
 }
