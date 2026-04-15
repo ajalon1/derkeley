@@ -112,6 +112,7 @@ func TestWorkloadCommandNotPresentByDefault(t *testing.T) {
 	cmd := RootCmd
 
 	var found bool
+
 	for _, subCmd := range cmd.Commands() {
 		if subCmd.Name() == "workload" {
 			found = true
