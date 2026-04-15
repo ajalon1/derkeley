@@ -84,11 +84,11 @@ func TestEnabled(t *testing.T) {
 
 func TestRemoveDisabledCommands(t *testing.T) {
 	tests := []struct {
-		name                 string
-		setupCmd             func() *cobra.Command
-		enabledFeatures       []string
-		expectedSubcommands  []string
-		expectedNotPresent   []string
+		name                string
+		setupCmd            func() *cobra.Command
+		enabledFeatures     []string
+		expectedSubcommands []string
+		expectedNotPresent  []string
 	}{
 		{
 			name: "removes top-level gated command",
@@ -170,24 +170,28 @@ func TestRemoveDisabledCommands(t *testing.T) {
 			// Check expected subcommands are present
 			for _, expectedName := range tt.expectedSubcommands {
 				found := false
+
 				for _, sub := range cmd.Commands() {
 					if sub.Name() == expectedName {
 						found = true
 						break
 					}
 				}
+
 				assert.True(t, found, "expected subcommand %s to be present", expectedName)
 			}
 
 			// Check expected not present are absent
 			for _, notExpectedName := range tt.expectedNotPresent {
 				found := false
+
 				for _, sub := range cmd.Commands() {
 					if sub.Name() == notExpectedName {
 						found = true
 						break
 					}
 				}
+
 				assert.False(t, found, "expected subcommand %s to be absent", notExpectedName)
 			}
 		})
