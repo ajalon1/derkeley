@@ -49,11 +49,12 @@ var configFilePath string
 type telemetryClientKey struct{}
 
 // RootCmd represents the base command when called without any subcommands
-var RootCmd = &cobra.Command{
-	Use:     internalVersion.CliName,
-	Version: internalVersion.Version,
-	Short:   "Build AI Applications Faster",
-	Long: `
+var RootCmd = &features.GatedCommand{
+	Command: &cobra.Command{
+		Use:     internalVersion.CliName,
+		Version: internalVersion.Version,
+		Short:   "Build AI Applications Faster",
+		Long: `
 The DataRobot CLI helps you quickly set up, configure, and deploy AI applications
 using pre-built templates. Get from idea to production in minutes, not hours.
 
@@ -68,43 +69,44 @@ using pre-built templates. Get from idea to production in minutes, not hours.
   dr --help            # Show all available commands
 
 💡 ` + tui.BaseTextStyle.Render("New to AI development?") + ` Perfect! Run 'dr start' and we'll guide you through everything.`,
-	// Show help by default when no subcommands match
-	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
-		// PersistentPreRunE is a hook called after flags are parsed
-		// but before the command is run. Any logic that needs to happen
-		// before ANY command execution should go here.
-		log.Start()
+		// Show help by default when no subcommands match
+		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+			// PersistentPreRunE is a hook called after flags are parsed
+			// but before the command is run. Any logic that needs to happen
+			// before ANY command execution should go here.
+			log.Start()
 
-		err := initializeConfig(cmd)
-		if err != nil {
-			return err
-		}
+			err := initializeConfig(cmd)
+			if err != nil {
+				return err
+			}
 
-		// Initialize telemetry client
-		// Check if enabled first to avoid unnecessary filesystem and network I/O.
-		var props *telemetry.CommonProperties
-		if telemetry.IsEnabled() {
-			props = telemetry.CollectCommonProperties()
-		}
+			// Initialize telemetry client
+			// Check if enabled first to avoid unnecessary filesystem and network I/O.
+			var props *telemetry.CommonProperties
+			if telemetry.IsEnabled() {
+				props = telemetry.CollectCommonProperties()
+			}
 
-		client := telemetry.NewClient(props)
+			client := telemetry.NewClient(props)
 
-		// Store telemetry client in context for use by commands
-		cmd.SetContext(context.WithValue(cmd.Context(), telemetryClientKey{}, client))
+			// Store telemetry client in context for use by commands
+			cmd.SetContext(context.WithValue(cmd.Context(), telemetryClientKey{}, client))
 
-		config.SetAPIConsumerTrace(config.CommandPathToTrace(cmd.CommandPath()))
+			config.SetAPIConsumerTrace(config.CommandPathToTrace(cmd.CommandPath()))
 
-		return nil
-	},
-	PersistentPostRunE: func(cmd *cobra.Command, _ []string) error {
-		// Flush telemetry events before exit
-		if client, ok := cmd.Context().Value(telemetryClientKey{}).(*telemetry.Client); ok {
-			client.Flush(3 * time.Second)
-		}
+			return nil
+		},
+		PersistentPostRunE: func(cmd *cobra.Command, _ []string) error {
+			// Flush telemetry events before exit
+			if client, ok := cmd.Context().Value(telemetryClientKey{}).(*telemetry.Client); ok {
+				client.Flush(3 * time.Second)
+			}
 
-		log.Stop()
+			log.Stop()
 
-		return nil
+			return nil
+		},
 	},
 }
 
@@ -160,6 +162,7 @@ func init() {
 	// Add commands here to ensure that they are available to users.
 	// Be sure to set the command's GroupID field appropriately;
 	// otherwise the command will be added under 'Additional Commands'.
+	// Commands with disabled feature gates are automatically filtered by GatedCommand.
 	RootCmd.AddCommand(
 		auth.Cmd(),
 		component.Cmd(),
@@ -174,11 +177,8 @@ func init() {
 		plugin.Cmd(),
 	)
 
-	// Remove commands that are gated behind disabled features
-	features.RemoveDisabledCommands(RootCmd)
-
 	// Discover and register plugin commands
-	plugin.RegisterPluginCommands(RootCmd)
+	plugin.RegisterPluginCommands(RootCmd.Command)
 
 	// Override the default help command to add --all-commands flag
 	defaultHelpFunc := RootCmd.HelpFunc()
