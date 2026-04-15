@@ -178,10 +178,6 @@ func init() {
 		plugin.Cmd(),
 	)
 
-	// Filter out commands with disabled feature gates (recursively).
-	// This handles both top-level and nested gated commands.
-	cli.RemoveDisabledCommands(RootCmd.Command)
-
 	// Discover and register plugin commands
 	plugin.RegisterPluginCommands(RootCmd.Command)
 

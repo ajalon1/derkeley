@@ -79,24 +79,27 @@ RootCmd.AddCommand(
 )
 ```
 
-That's it. The `RemoveDisabledCommands(RootCmd)` call already in `init()` will handle filtering.
+That's it. `RootCmd` is a `cli.CommandAdder`, so `AddCommand` automatically filters any gated command whose feature is disabled.
 
 ## Gating Subcommands
 
-The feature gate system works recursively, so you can gate subcommands at any depth:
+To gate a subcommand, the **parent** command must also use `cli.CommandAdder` so that filtering applies when its children are registered:
 
 ```go
-subCmd := &cobra.Command{
-    Use:     "advanced-feature",
-    Short:   "An advanced feature still in development",
-    Annotations: map[string]string{
-        features.AnnotationKey: "advanced-feature",
-    },
+func Cmd() *cobra.Command {
+    parent := &cobra.Command{Use: "parent"}
+
+    adder := &cli.CommandAdder{Command: parent}
+    adder.AddCommand(
+        ungatedSubCmd,
+        gatedSubCmd, // filtered at registration time if feature is off
+    )
+
+    return parent
 }
-parentCmd.AddCommand(subCmd)
 ```
 
-When the parent command is gated and disabled, child commands are implicitly unavailable. You can also gate a child while its parent is available.
+When the parent command itself is gated and disabled, child commands are implicitly unavailable because the parent is never added to the tree.
 
 ## Removing a Feature Gate (GA Release)
 
@@ -125,7 +128,8 @@ When a feature is ready for general availability:
 
 Feature flags are tested via:
 
-- Unit tests in `internal/features/features_test.go` covering `Enabled()` and `RemoveDisabledCommands()`
+- Unit tests in `internal/features/features_test.go` covering `Enabled()`
+- Unit tests in `internal/cli/command_test.go` covering `CommandAdder`
 - Integration tests in `cmd/root_test.go` verifying runtime behavior
 - Manual testing with env vars: `DATAROBOT_CLI_FEATURE_<NAME>=true dr <command>`
 

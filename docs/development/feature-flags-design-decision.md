@@ -17,7 +17,7 @@ We need a **scalable, maintainable, and zero-boilerplate mechanism** that allows
 
 ## Decision
 
-Implement an **annotation-based feature gate system** using Cobra's built-in `Annotations` map and a single recursive filtering function.
+Implement an **annotation-based feature gate system** using Cobra's built-in `Annotations` map and a `CommandAdder` wrapper that filters at registration time.
 
 ### Rationale
 
@@ -34,10 +34,11 @@ Implement an **annotation-based feature gate system** using Cobra's built-in `An
 - Searchable—easy to find all gated commands (`grep -r "feature-gate"`)
 - Future-proof—can add more metadata (e.g., rollout %, targeting) without code changes
 
-**Why recursive filtering?**
-- Supports gating at any depth (top-level and nested commands)
-- Single implementation handles all cases
-- Implicit child removal—if parent is gated, children are unavailable
+**Why `CommandAdder` at registration time?**
+- Commands with disabled gates never enter the tree — no post-hoc cleanup needed
+- Single enforcement point (`AddCommand`) rather than a separate traversal pass
+- Implicit child removal — if the parent is gated and not added, its children never exist
+- For nested gated subcommands, the parent command wraps itself with `CommandAdder` the same way
 
 **Why env-var-only initially?**
 - Simpler to implement (no Viper dependency during init)
@@ -52,16 +53,12 @@ Implement an **annotation-based feature gate system** using Cobra's built-in `An
 ┌─────────────────────────────────┐
 │  cmd/root.go init()             │
 ├─────────────────────────────────┤
-│ 1. RootCmd.AddCommand(...)      │
-│    - auth, component, dotenv... │
-│    - workload (with annotation) │
-│    - plugin, etc.               │
+│ RootCmd is a *cli.CommandAdder  │
 │                                 │
-│ 2. features.RemoveDisabled      │
-│    Commands(RootCmd)            │
-│    - Recursive traversal        │
-│    - Check env vars             │
-│    - Remove disabled commands   │
+│ RootCmd.AddCommand(...)         │
+│   - auth, component, dotenv...  │
+│   - workload (gated annotation) │← filtered here if disabled
+│   - plugin, etc.                │
 └─────────────────────────────────┘
          ↓
 ┌─────────────────────────────────┐
@@ -73,9 +70,10 @@ Implement an **annotation-based feature gate system** using Cobra's built-in `An
 
 ### Key Components
 
-#### 1. Feature Flag Package (`internal/features/`)
+#### 1. Feature Flag Package (`internal/features/` + `internal/cli/`)
 
 ```go
+// internal/features/features.go
 const AnnotationKey = "feature-gate"
 
 func Enabled(name string) bool {
@@ -83,21 +81,24 @@ func Enabled(name string) bool {
     return os.Getenv(envKey) == "true" || os.Getenv(envKey) == "1"
 }
 
-func RemoveDisabledCommands(parent *cobra.Command) {
-    for _, cmd := range parent.Commands() {
-        if gate, ok := cmd.Annotations[AnnotationKey]; ok && !Enabled(gate) {
-            parent.RemoveCommand(cmd)
-        } else {
-            RemoveDisabledCommands(cmd)  // Recurse
+// internal/cli/command.go
+type CommandAdder struct{ *cobra.Command }
+
+func (gc *CommandAdder) AddCommand(cmds ...*cobra.Command) {
+    for _, cmd := range cmds {
+        if gate, ok := cmd.Annotations[features.AnnotationKey]; ok && !features.Enabled(gate) {
+            continue  // never added to the tree
         }
+        gc.Command.AddCommand(cmd)
     }
 }
 ```
 
 **Why this design:**
-- `Enabled()` is pure function (testable, no side effects)
-- `RemoveDisabledCommands()` mutates command tree at init time (safe, single point of filtering)
-- No per-command guards or `if` statements scattered through codebase
+- `Enabled()` is a pure function (testable, no side effects)
+- `CommandAdder` filters at registration time — disabled commands never enter the tree
+- No post-hoc traversal or removal pass needed
+- No per-command guards or `if` statements scattered through the codebase
 
 #### 2. Command Annotation
 
@@ -189,7 +190,8 @@ func registerIfEnabled(parent *cobra.Command, name string, cmd *cobra.Command) {
 ## Implementation Plan
 
 ### Phase 1: Core System (Completed)
-- [x] Create `internal/features/` package with `Enabled()` and `RemoveDisabledCommands()`
+- [x] Create `internal/features/` package with `Enabled()`
+- [x] Create `internal/cli/` package with `CommandAdder`
 - [x] Add unit tests (100% coverage)
 - [x] Integrate into `cmd/root.go`
 - [x] Create placeholder `cmd/workload/` command with annotation
@@ -211,9 +213,9 @@ func registerIfEnabled(parent *cobra.Command, name string, cmd *cobra.Command) {
 
 ## Testing Strategy
 
-### Unit Tests (`internal/features/features_test.go`)
-- ✅ `TestEnabled()` — env var true/1/false/unset
-- ✅ `TestRemoveDisabledCommands()` — top-level and nested command removal
+### Unit Tests
+- ✅ `TestEnabled()` — env var true/1/false/unset (`internal/features/features_test.go`)
+- ✅ `TestCommandAdder()` — top-level and nested command filtering (`internal/cli/command_test.go`)
 
 ### Integration Tests (`cmd/root_test.go`)
 - ✅ `TestWorkloadCommandNotPresentByDefault()` — verifies workload is hidden without flag

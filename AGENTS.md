@@ -107,6 +107,8 @@ Feature gates allow commands to be hidden until ready for release. For comprehen
 - Gated commands use `Annotations: map[string]string{features.AnnotationKey: "feature-name"}`
 - Enable via env var: `DATAROBOT_CLI_FEATURE_<NAME>=true` (e.g., `DATAROBOT_CLI_FEATURE_WORKLOAD=true`)
 - Currently supported: environment variables only (config file support planned)
+- Filtering happens via `cli.CommandAdder.AddCommand` at registration time — `CommandAdder` is the only filtering mechanism
+- To gate a **nested** subcommand, wrap the parent with `&cli.CommandAdder{Command: parent}` and call `adder.AddCommand(...)` instead of `parent.AddCommand(...)`
 
 ## PR Output Format
 

@@ -39,15 +39,3 @@ func (gc *CommandAdder) AddCommand(cmds ...*cobra.Command) {
 		gc.Command.AddCommand(cmd)
 	}
 }
-
-// RemoveDisabledCommands recursively removes any subcommands
-// that have a "feature-gate" annotation whose feature is not enabled.
-func RemoveDisabledCommands(parent *cobra.Command) {
-	for _, cmd := range parent.Commands() {
-		if gate, ok := cmd.Annotations[features.AnnotationKey]; ok && !features.Enabled(gate) {
-			parent.RemoveCommand(cmd)
-		} else {
-			RemoveDisabledCommands(cmd)
-		}
-	}
-}

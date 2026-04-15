@@ -98,9 +98,8 @@ An environment configuration builder that:
 
 CLI infrastructure and utilities:
 
-- `GatedCommand`: Wrapper for Cobra commands that filters subcommands based on feature gates
-- `RemoveDisabledCommands`: Recursively removes disabled gated commands from the command tree
-- Used by the root command to intelligently register commands based on feature availability
+- `CommandAdder`: Wraps a `cobra.Command` and overrides `AddCommand` to skip children with a disabled feature gate annotation
+- Used by the root command (and any parent command with gated children) to filter commands at registration time
 
 #### features/
 
