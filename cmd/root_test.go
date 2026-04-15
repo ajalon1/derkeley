@@ -105,3 +105,19 @@ func TestVersionFlag(t *testing.T) {
 		})
 	}
 }
+
+func TestWorkloadCommandNotPresentByDefault(t *testing.T) {
+	// Verify that workload command is not present by default (feature not enabled).
+	// The feature gating happens during init(), so this tests the actual state.
+	cmd := RootCmd
+
+	var found bool
+	for _, subCmd := range cmd.Commands() {
+		if subCmd.Name() == "workload" {
+			found = true
+			break
+		}
+	}
+
+	assert.False(t, found, "workload command should not be present when feature flag is not enabled")
+}
