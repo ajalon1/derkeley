@@ -70,7 +70,7 @@ func TestEnabled(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Compute the env key (hyphens become underscores)
-			envKey := "DATAROBOT_CLI_FEATURES_" + strings.ToUpper(strings.ReplaceAll(tt.featureName, "-", "_"))
+			envKey := "DATAROBOT_CLI_FEATURE_" + strings.ToUpper(strings.ReplaceAll(tt.featureName, "-", "_"))
 
 			if tt.envVarValue != "" {
 				t.Setenv(envKey, tt.envVarValue)

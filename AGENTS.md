@@ -105,7 +105,7 @@ Feature gates allow commands to be hidden until ready for release. For comprehen
 
 **Quick reference:**
 - Gated commands use `Annotations: map[string]string{features.AnnotationKey: "feature-name"}`
-- Enable via env var: `DATAROBOT_CLI_FEATURES_<NAME>=true` (e.g., `DATAROBOT_CLI_FEATURES_WORKLOAD=true`)
+- Enable via env var: `DATAROBOT_CLI_FEATURE_<NAME>=true` (e.g., `DATAROBOT_CLI_FEATURE_WORKLOAD=true`)
 - Currently supported: environment variables only (config file support planned)
 
 ## PR Output Format

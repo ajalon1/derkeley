@@ -79,7 +79,7 @@ Implement an **annotation-based feature gate system** using Cobra's built-in `An
 const AnnotationKey = "feature-gate"
 
 func Enabled(name string) bool {
-    envKey := "DATAROBOT_CLI_FEATURES_" + toUpperWithUnderscores(name)
+    envKey := "DATAROBOT_CLI_FEATURE_" + toUpperWithUnderscores(name)
     return os.Getenv(envKey) == "true" || os.Getenv(envKey) == "1"
 }
 
@@ -121,12 +121,12 @@ func Cmd() *cobra.Command {
 
 **Environment Variable:**
 ```bash
-DATAROBOT_CLI_FEATURES_WORKLOAD=true dr workload --help
+DATAROBOT_CLI_FEATURE_WORKLOAD=true dr workload --help
 ```
 
 **Naming convention:**
-- Feature: `"workload"` → Env var: `DATAROBOT_CLI_FEATURES_WORKLOAD`
-- Feature: `"my-feature"` → Env var: `DATAROBOT_CLI_FEATURES_MY_FEATURE`
+- Feature: `"workload"` → Env var: `DATAROBOT_CLI_FEATURE_WORKLOAD`
+- Feature: `"my-feature"` → Env var: `DATAROBOT_CLI_FEATURE_MY_FEATURE`
 - Hyphens in feature names become underscores in env vars
 
 ## Alternatives Considered
@@ -225,8 +225,8 @@ dr --help               # workload not shown
 dr workload             # "unknown command" error
 
 # Feature enabled
-DATAROBOT_CLI_FEATURES_WORKLOAD=true dr --help      # workload shown
-DATAROBOT_CLI_FEATURES_WORKLOAD=true dr workload    # command available
+DATAROBOT_CLI_FEATURE_WORKLOAD=true dr --help      # workload shown
+DATAROBOT_CLI_FEATURE_WORKLOAD=true dr workload    # command available
 ```
 
 ## Security Considerations
@@ -256,7 +256,7 @@ Hide unfinished features from casual discovery and prevent accidental use.
 3. Feature is now permanent; flag is obsolete
 
 ### Monitoring Enabled Features
-- Check CI/CD logs for `DATAROBOT_CLI_FEATURES_*` env vars
+- Check CI/CD logs for `DATAROBOT_CLI_FEATURE_*` env vars
 - Search codebase for `Annotations.*feature-gate` to find all gated commands
 
 ## Success Criteria

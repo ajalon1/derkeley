@@ -31,15 +31,15 @@ When a command is removed, it:
 
 ### Environment Variable (Primary Method)
 
-Set the env var `DATAROBOT_CLI_FEATURES_<FEATURE_NAME>=true` or `=1`:
+Set the env var `DATAROBOT_CLI_FEATURE_<FEATURE_NAME>=true` or `=1`:
 
 ```bash
-DATAROBOT_CLI_FEATURES_WORKLOAD=true dr workload --help
+DATAROBOT_CLI_FEATURE_WORKLOAD=true dr workload --help
 ```
 
 Feature names are converted from lowercase with hyphens to uppercase with underscores:
-- `workload` → `DATAROBOT_CLI_FEATURES_WORKLOAD`
-- `my-feature` → `DATAROBOT_CLI_FEATURES_MY_FEATURE`
+- `workload` → `DATAROBOT_CLI_FEATURE_WORKLOAD`
+- `my-feature` → `DATAROBOT_CLI_FEATURE_MY_FEATURE`
 
 ### Config File (Future)
 
@@ -127,7 +127,7 @@ Feature flags are tested via:
 
 - Unit tests in `internal/features/features_test.go` covering `Enabled()` and `RemoveDisabledCommands()`
 - Integration tests in `cmd/root_test.go` verifying runtime behavior
-- Manual testing with env vars: `DATAROBOT_CLI_FEATURES_<NAME>=true dr <command>`
+- Manual testing with env vars: `DATAROBOT_CLI_FEATURE_<NAME>=true dr <command>`
 
 ## Limitations
 

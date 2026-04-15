@@ -94,7 +94,7 @@ func TestCommandAdder(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Set env vars for enabled features
 			for _, feature := range tt.enabledFeatures {
-				t.Setenv("DATAROBOT_CLI_FEATURES_"+feature, "true")
+				t.Setenv("DATAROBOT_CLI_FEATURE_"+feature, "true")
 			}
 
 			root := &CommandAdder{
@@ -212,7 +212,7 @@ func TestRemoveDisabledCommands(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Set env vars for enabled features
 			for _, feature := range tt.enabledFeatures {
-				t.Setenv("DATAROBOT_CLI_FEATURES_"+feature, "true")
+				t.Setenv("DATAROBOT_CLI_FEATURE_"+feature, "true")
 			}
 
 			cmd := tt.setupCmd()

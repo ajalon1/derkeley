@@ -32,13 +32,13 @@ func SetGate(cmd *cobra.Command, name string) {
 	cmd.Annotations[AnnotationKey] = name
 }
 
-// Enabled checks env var DATAROBOT_CLI_FEATURES_<NAME>.
+// Enabled checks env var DATAROBOT_CLI_FEATURE_<NAME>.
 // Currently only env vars are supported; config file support requires
 // Viper initialization which happens after command registration.
 // TODO: Support config file (drconfig.yaml) feature gates once
 // we move filtering to PersistentPreRunE or read config independently.
 func Enabled(name string) bool {
-	envKey := "DATAROBOT_CLI_FEATURES_" + strings.ToUpper(strings.ReplaceAll(name, "-", "_"))
+	envKey := "DATAROBOT_CLI_FEATURE_" + strings.ToUpper(strings.ReplaceAll(name, "-", "_"))
 	if v := os.Getenv(envKey); v != "" {
 		return strings.EqualFold(v, "true") || v == "1"
 	}
