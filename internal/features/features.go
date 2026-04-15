@@ -23,6 +23,15 @@ import (
 
 const AnnotationKey = "feature-gate"
 
+// SetGate adds a feature gate annotation to a command, preserving any existing annotations.
+func SetGate(cmd *cobra.Command, name string) {
+	if cmd.Annotations == nil {
+		cmd.Annotations = make(map[string]string)
+	}
+
+	cmd.Annotations[AnnotationKey] = name
+}
+
 // Enabled checks env var DATAROBOT_CLI_FEATURES_<NAME>.
 // Currently only env vars are supported; config file support requires
 // Viper initialization which happens after command registration.

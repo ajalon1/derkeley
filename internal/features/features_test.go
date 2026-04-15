@@ -82,6 +82,43 @@ func TestEnabled(t *testing.T) {
 	}
 }
 
+func TestSetGate(t *testing.T) {
+	tests := []struct {
+		name             string
+		cmd              *cobra.Command
+		featureName      string
+		existingAnnot    map[string]string
+		expectedGate     string
+		shouldPreserveAn bool
+	}{
+		{
+			name:         "adds gate to command with no annotations",
+			cmd:          &cobra.Command{Use: "test"},
+			featureName:  "my-feature",
+			expectedGate: "my-feature",
+		},
+		{
+			name:             "preserves existing annotations",
+			cmd:              &cobra.Command{Use: "test", Annotations: map[string]string{"key": "value"}},
+			featureName:      "my-feature",
+			expectedGate:     "my-feature",
+			shouldPreserveAn: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			SetGate(tt.cmd, tt.featureName)
+
+			assert.Equal(t, tt.expectedGate, tt.cmd.Annotations[AnnotationKey])
+
+			if tt.shouldPreserveAn {
+				assert.Equal(t, "value", tt.cmd.Annotations["key"])
+			}
+		})
+	}
+}
+
 func TestRemoveDisabledCommands(t *testing.T) {
 	tests := []struct {
 		name                string

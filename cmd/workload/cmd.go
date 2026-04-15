@@ -27,10 +27,9 @@ func Cmd() *cobra.Command {
 		Long: `Workload management commands for your DataRobot applications.
 
 Manage and monitor workloads in your deployment infrastructure.`,
-		Annotations: map[string]string{
-			features.AnnotationKey: "workload",
-		},
 	}
+
+	features.SetGate(cmd, "workload")
 
 	return cmd
 }
