@@ -104,7 +104,7 @@ The `GOLANGCI_LINT_VERSION` is pinned to ensure reproducible builds across all d
 Feature gates allow commands to be hidden until ready for release. For comprehensive documentation including implementation details, see [docs/development/feature-gates.md](docs/development/feature-gates.md).
 
 **Quick reference:**
-- Gated commands use `Annotations: map[string]string{features.AnnotationKey: "feature-name"}`
+- Gate a command via `features.SetGate(cmd, "feature-name")` (sets the annotation on the command)
 - Enable via env var: `DATAROBOT_CLI_FEATURE_<NAME>=true` (e.g., `DATAROBOT_CLI_FEATURE_WORKLOAD=true`)
 - Currently supported: environment variables only (config file support planned)
 - Filtering happens via `cli.CommandAdder.AddCommand` at registration time — `CommandAdder` is the only filtering mechanism
