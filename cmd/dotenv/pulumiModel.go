@@ -223,7 +223,7 @@ func (m pulumiLoginModel) handlePassphrasePromptKey(msg tea.KeyMsg) (tea.Model, 
 }
 
 func (m pulumiLoginModel) handlePassphraseAccepted() (tea.Model, tea.Cmd) {
-	passphrase, err := generateRandomSecret(generatedPassphraseLength)
+	passphrase, err := envbuilder.GenerateRandomSecret(generatedPassphraseLength)
 	if err != nil {
 		m.err = fmt.Errorf("failed to generate passphrase: %w", err)
 
