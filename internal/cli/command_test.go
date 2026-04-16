@@ -104,31 +104,43 @@ func TestCommandAdder(t *testing.T) {
 
 			// Check expected commands are present
 			for _, expectedName := range tt.expectedCmdNames {
-				found := false
-
-				for _, cmd := range root.Commands() {
-					if cmd.Name() == expectedName {
-						found = true
-						break
-					}
-				}
-
-				assert.True(t, found, "expected command %s to be present", expectedName)
+				assert.True(t, commandExists(root.Commands(), expectedName),
+					"expected command %s to be present", expectedName)
 			}
 
 			// Check expected not present are absent
 			for _, notExpectedName := range tt.expectedNotPresent {
-				found := false
-
-				for _, cmd := range root.Commands() {
-					if cmd.Name() == notExpectedName {
-						found = true
-						break
-					}
-				}
-
-				assert.False(t, found, "expected command %s to be absent", notExpectedName)
+				assert.False(t, commandExistsOrHasChild(root.Commands(), notExpectedName),
+					"expected command %s to be absent", notExpectedName)
 			}
 		})
 	}
+}
+
+// commandExists checks if a command with the given name exists in the provided list.
+func commandExists(cmds []*cobra.Command, commandNameInQuestion string) bool {
+	for _, cmd := range cmds {
+		if cmd.Name() == commandNameInQuestion {
+			return true
+		}
+	}
+
+	return false
+}
+
+// commandExistsOrHasChild checks if a command with the given name exists at root level
+// or as a child of any root command. This is needed to verify nested command filtering.
+func commandExistsOrHasChild(cmds []*cobra.Command, commandNameInQuestion string) bool {
+	for _, cmd := range cmds {
+		if cmd.Name() == commandNameInQuestion {
+			return true
+		}
+
+		// Check nested children
+		if commandExists(cmd.Commands(), commandNameInQuestion) {
+			return true
+		}
+	}
+
+	return false
 }
