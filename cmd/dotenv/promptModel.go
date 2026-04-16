@@ -43,8 +43,7 @@ var (
 )
 
 const (
-	cursorStyle           = '•'
-	generatedSecretLength = 32
+	cursorStyle = '•'
 )
 
 type item envbuilder.PromptOption
@@ -105,18 +104,6 @@ func newPromptModel(prompt envbuilder.UserPrompt, successCmd tea.Cmd) (promptMod
 }
 
 func newTextInputPrompt(prompt envbuilder.UserPrompt, successCmd tea.Cmd) (promptModel, tea.Cmd) {
-	// Auto-generate a random secret if:
-	// 1. Generate flag is set
-	// 2. Type is secret_string
-	// 3. No value is currently set
-	if prompt.Value == "" && prompt.Generate && prompt.Type == envbuilder.PromptTypeSecret {
-		generatedSecret, err := generateRandomSecret(generatedSecretLength)
-		if err == nil {
-			prompt.Value = generatedSecret
-		}
-		// If generation fails, just leave value empty and let user enter manually
-	}
-
 	ti := textinput.New()
 	ti.SetValue(prompt.Value)
 
