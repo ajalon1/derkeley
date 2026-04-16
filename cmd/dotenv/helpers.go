@@ -28,6 +28,7 @@ import (
 	"github.com/datarobot/cli/tui"
 )
 
+// generateRandomSecret creates a random string of the specified length, suitable for use as a secret value.
 func generateRandomSecret(length int) (string, error) {
 	bytes := make([]byte, length)
 
