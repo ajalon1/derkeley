@@ -314,6 +314,84 @@ func (suite *BuilderTestSuite) TestShouldAsk_SkipsPromptWithGenerate() {
 	suite.False(prompt.ShouldAsk(false), "Should skip prompt when generate is true")
 }
 
+func (suite *BuilderTestSuite) TestShouldAsk_GenerateWithValueSkipped() {
+	prompt := UserPrompt{Active: true, Hidden: false, Generate: true, Value: "some_generated_value"}
+	suite.False(prompt.ShouldAsk(false), "Should skip prompt when generate is true even if value is set")
+}
+
+func (suite *BuilderTestSuite) TestShouldAsk_GenerateAlwaysPromptShowAll() {
+	prompt := UserPrompt{Active: true, Hidden: false, Generate: true}
+	suite.True(prompt.ShouldAsk(true), "Should show prompt when generate is true but showAll is true")
+}
+
+func (suite *BuilderTestSuite) TestShouldAsk_GenerateWithSecretType() {
+	prompt := UserPrompt{
+		Active:   true,
+		Hidden:   false,
+		Generate: true,
+		Type:     PromptTypeSecret,
+		Help:     "Auto-generated secret",
+	}
+	suite.False(prompt.ShouldAsk(false), "Should skip secret_string prompt when generate is true")
+}
+
+func (suite *BuilderTestSuite) TestShouldAsk_GenerateWithDefault() {
+	prompt := UserPrompt{
+		Active:   true,
+		Hidden:   false,
+		Generate: true,
+		Default:  "default_secret",
+		Value:    "default_secret",
+	}
+	suite.False(prompt.ShouldAsk(false), "Should skip prompt when generate is true, even if default is set")
+}
+
+func (suite *BuilderTestSuite) TestGenerateYAMLParsing() {
+	yamlContent := `
+root:
+  - env: SESSION_SECRET
+    type: secret_string
+    generate: true
+    help: Session encryption key (auto-generated)
+    optional: false
+  - env: API_KEY
+    type: secret_string
+    generate: false
+    help: Enter your API key
+    optional: false
+  - env: JWT_SECRET
+    type: secret_string
+    generate: true
+    help: JWT signing key
+    optional: false
+    always_prompt: true
+`
+
+	// Create a temporary YAML file
+	tmpFile := filepath.Join(suite.tempDir, ".datarobot", "test_generate.yaml")
+	err := os.WriteFile(tmpFile, []byte(yamlContent), 0o600)
+	suite.Require().NoError(err)
+
+	// Parse the file
+	prompts, err := filePrompts(tmpFile)
+	suite.Require().NoError(err)
+	suite.Require().Len(prompts, 3, "Expected 3 prompts")
+
+	// Verify generate is correctly parsed
+	suite.Equal("SESSION_SECRET", prompts[0].Env)
+	suite.True(prompts[0].Generate, "SESSION_SECRET should have generate=true")
+	suite.Equal(PromptTypeSecret, prompts[0].Type, "SESSION_SECRET should be secret_string type")
+	suite.False(prompts[0].AlwaysPrompt, "SESSION_SECRET should have always_prompt=false (default)")
+
+	suite.Equal("API_KEY", prompts[1].Env)
+	suite.False(prompts[1].Generate, "API_KEY should have generate=false (explicit)")
+	suite.Equal(PromptTypeSecret, prompts[1].Type, "API_KEY should be secret_string type")
+
+	suite.Equal("JWT_SECRET", prompts[2].Env)
+	suite.True(prompts[2].Generate, "JWT_SECRET should have generate=true")
+	suite.True(prompts[2].AlwaysPrompt, "JWT_SECRET should have always_prompt=true")
+}
+
 func (suite *BuilderTestSuite) TestHasRequiresOptions() {
 	promptWithRequires := UserPrompt{
 		Options: []PromptOption{
