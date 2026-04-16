@@ -99,6 +99,17 @@ When upgrading the Go version in `go.mod`, you may need to update golangci-lint 
 
 The `GOLANGCI_LINT_VERSION` is pinned to ensure reproducible builds across all development environments. The binary is installed as a standalone pre-built artifact, not via `go install`, so version mismatches between your project's Go version and golangci-lint's internal Go version are handled automatically.
 
+## Feature Gates
+
+Feature gates allow commands to be hidden until ready for release. For comprehensive documentation including implementation details, see [docs/development/feature-gates.md](docs/development/feature-gates.md).
+
+**Quick reference:**
+- Gate a command via `features.SetGate(cmd, "feature-name")` (sets the annotation on the command)
+- Enable via env var: `DATAROBOT_CLI_FEATURE_<NAME>=true` (e.g., `DATAROBOT_CLI_FEATURE_WORKLOAD=true`)
+- Currently supported: environment variables only (config file support planned)
+- Filtering happens via `cli.CommandAdder.AddCommand` at registration time — `CommandAdder` is the only filtering mechanism
+- To gate a **nested** subcommand, wrap the parent with `&cli.CommandAdder{Command: parent}` and call `adder.AddCommand(...)` instead of `parent.AddCommand(...)`
+
 ## PR Output Format
 
 Output change summaries in Markdown format using the template in `.github/PULL_REQUEST_TEMPLATE.md`.
