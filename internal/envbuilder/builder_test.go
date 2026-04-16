@@ -309,6 +309,11 @@ func (suite *BuilderTestSuite) TestShouldAsk_OptionsWithoutRequiresCanBeSkipped(
 	suite.False(prompt.ShouldAsk(false), "Should skip prompt with options but no requires if value equals default")
 }
 
+func (suite *BuilderTestSuite) TestShouldAsk_SkipsPromptWithGenerate() {
+	prompt := UserPrompt{Active: true, Hidden: false, Generate: true}
+	suite.False(prompt.ShouldAsk(false), "Should skip prompt when generate is true")
+}
+
 func (suite *BuilderTestSuite) TestHasRequiresOptions() {
 	promptWithRequires := UserPrompt{
 		Options: []PromptOption{

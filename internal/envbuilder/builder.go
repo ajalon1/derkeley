@@ -176,6 +176,7 @@ func (up UserPrompt) HasRequiresOptions() bool {
 // ShouldAsk returns true if this prompt should be shown to the user.
 // Prompts with defaults are skipped unless AlwaysPrompt is set, showAll is true,
 // or the prompt has options with requires (which control conditional sections).
+// Prompts with generate: true are also skipped as they are auto-generated.
 func (up UserPrompt) ShouldAsk(showAll bool) bool {
 	if !up.Active || up.Hidden {
 		return false
@@ -194,6 +195,11 @@ func (up UserPrompt) ShouldAsk(showAll bool) bool {
 	// Always show prompts with requires options - they control conditional sections
 	if up.HasRequiresOptions() {
 		return true
+	}
+
+	// Skip prompts that are auto-generated
+	if up.Generate {
+		return false
 	}
 
 	// Skip prompts that have a default and value equals default (not user-modified)
