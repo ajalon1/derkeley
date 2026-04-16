@@ -15,6 +15,8 @@
 package envbuilder
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"maps"
 	"os"
@@ -29,8 +31,9 @@ import (
 type PromptType string
 
 const (
-	PromptTypeString PromptType = "string"
-	PromptTypeSecret PromptType = "secret_string"
+	PromptTypeString      PromptType = "string"
+	PromptTypeSecret      PromptType = "secret_string"
+	GeneratedSecretLength int        = 32
 )
 
 func (pt PromptType) String() string {
@@ -210,6 +213,38 @@ func (up UserPrompt) ShouldAsk(showAll bool) bool {
 	return true
 }
 
+// GenerateRandomSecret creates a cryptographically random base64-encoded secret of the specified length.
+func GenerateRandomSecret(length int) (string, error) {
+	bytes := make([]byte, length)
+
+	_, err := rand.Read(bytes)
+	if err != nil {
+		return "", fmt.Errorf("Failed to generate random bytes: %w", err)
+	}
+
+	return base64.URLEncoding.EncodeToString(bytes)[:length], nil
+}
+
+// ApplyGeneratedValues auto-generates values for prompts with generate: true that don't already have a value.
+func ApplyGeneratedValues(prompts []UserPrompt) ([]UserPrompt, error) {
+	for p := range prompts {
+		prompt := prompts[p]
+
+		// Only generate for prompts with generate: true, secret_string type, and no existing value
+		if prompt.Generate && prompt.Type == PromptTypeSecret && prompt.Value == "" {
+			generatedValue, err := GenerateRandomSecret(GeneratedSecretLength)
+			if err != nil {
+				return nil, fmt.Errorf("Failed to generate value for %s: %w", prompt.VarName(), err)
+			}
+
+			prompt.Value = generatedValue
+			prompts[p] = prompt
+		}
+	}
+
+	return prompts, nil
+}
+
 func GatherUserPrompts(rootDir string, variables Variables) ([]UserPrompt, error) {
 	yamlFiles, err := Discover(rootDir, 5)
 	if err != nil {
@@ -230,6 +265,12 @@ func GatherUserPrompts(rootDir string, variables Variables) ([]UserPrompt, error
 	}
 
 	allPrompts = promptsWithValues(allPrompts, variables)
+
+	allPrompts, err = ApplyGeneratedValues(allPrompts)
+	if err != nil {
+		return nil, err
+	}
+
 	allPrompts = DetermineRequiredSections(allPrompts)
 
 	return allPrompts, nil

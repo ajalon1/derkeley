@@ -412,3 +412,94 @@ func (suite *BuilderTestSuite) TestHasRequiresOptions() {
 	promptNoOptions := UserPrompt{}
 	suite.False(promptNoOptions.HasRequiresOptions())
 }
+
+func (suite *BuilderTestSuite) TestApplyGeneratedValues_GeneratesValue() {
+	prompts := []UserPrompt{
+		{
+			Env:      "SESSION_SECRET",
+			Type:     PromptTypeSecret,
+			Generate: true,
+			Value:    "",
+		},
+	}
+
+	result, err := ApplyGeneratedValues(prompts)
+	suite.Require().NoError(err)
+	suite.NotEmpty(result[0].Value, "Should generate a value for secret_string with generate: true")
+	suite.Len(result[0].Value, GeneratedSecretLength, "Generated value should match expected length")
+}
+
+func (suite *BuilderTestSuite) TestApplyGeneratedValues_DoesNotOverwriteExistingValue() {
+	prompts := []UserPrompt{
+		{
+			Env:      "SESSION_SECRET",
+			Type:     PromptTypeSecret,
+			Generate: true,
+			Value:    "existing_value",
+		},
+	}
+
+	result, err := ApplyGeneratedValues(prompts)
+	suite.Require().NoError(err)
+	suite.Equal("existing_value", result[0].Value, "Should not overwrite existing value")
+}
+
+func (suite *BuilderTestSuite) TestApplyGeneratedValues_IgnoresNonGeneratePrompts() {
+	prompts := []UserPrompt{
+		{
+			Env:      "API_KEY",
+			Type:     PromptTypeSecret,
+			Generate: false,
+			Value:    "",
+		},
+	}
+
+	result, err := ApplyGeneratedValues(prompts)
+	suite.Require().NoError(err)
+	suite.Empty(result[0].Value, "Should not generate value for prompts with generate: false")
+}
+
+func (suite *BuilderTestSuite) TestApplyGeneratedValues_IgnoresNonSecretTypes() {
+	prompts := []UserPrompt{
+		{
+			Env:      "SOME_VAR",
+			Type:     PromptTypeString,
+			Generate: true,
+			Value:    "",
+		},
+	}
+
+	result, err := ApplyGeneratedValues(prompts)
+	suite.Require().NoError(err)
+	suite.Empty(result[0].Value, "Should not generate value for non-secret_string types")
+}
+
+func (suite *BuilderTestSuite) TestApplyGeneratedValues_MultiplePrompts() {
+	prompts := []UserPrompt{
+		{
+			Env:      "SESSION_SECRET",
+			Type:     PromptTypeSecret,
+			Generate: true,
+			Value:    "",
+		},
+		{
+			Env:      "EXISTING_SECRET",
+			Type:     PromptTypeSecret,
+			Generate: true,
+			Value:    "already_set",
+		},
+		{
+			Env:      "API_KEY",
+			Type:     PromptTypeSecret,
+			Generate: false,
+			Value:    "",
+		},
+	}
+
+	result, err := ApplyGeneratedValues(prompts)
+	suite.Require().NoError(err)
+
+	suite.NotEmpty(result[0].Value, "First secret should be generated")
+	suite.Equal("already_set", result[1].Value, "Second secret should not be overwritten")
+	suite.Empty(result[2].Value, "Third secret should not be generated (generate: false)")
+}
