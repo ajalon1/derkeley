@@ -177,8 +177,8 @@ dr --config /path/to/config.yaml [command]
 
 Important files and where to find them. See the [configuration files documentation](configuration.md) for detailed information about file locations and management.
 
-| File/Directory       | Location                                            |
-|----------------------|-----------------------------------------------------|
+| File/Directory | Location |
+| -------------- | -------- |
 | Config file          | `~/.config/datarobot/drconfig.yaml`                 |
 | State file           | `.datarobot/cli/state.yaml` (in template directory) |
 | Environment file     | `.env` (in template directory)                      |

@@ -8,8 +8,8 @@ DataRobot CLI (`dr`) - A Go-based command-line interface for managing DataRobot 
 
 Use Taskfile tasks rather than raw Go commands:
 
-| Command         | Description                                 |
-| --------------- | ------------------------------------------- |
+| Command | Description |
+| ------- | ----------- |
 | `task build`    | Build the CLI binary (outputs to ./dist/dr) |
 | `task lint`     | Check for lint issues (read-only)           |
 | `task delint`   | Fix lint and formatting issues              |

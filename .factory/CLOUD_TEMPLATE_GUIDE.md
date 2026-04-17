@@ -153,12 +153,12 @@ This skips linting and testing, reducing setup time to ~1-2 minutes.
 ### Troubleshooting Setup Issues
 
 | Issue | Solution |
-|-------|----------|
-| "Setup script failed: ..." | Check build logs for specific error. Run the script locally to debug. |
-| Command not found (e.g., `task`) | The install command in the setup script should handle this. Check build logs. |
-| Slow build time | Remove `task lint` and `task test` from the script if not needed initially. Add them back later. |
-| Out of disk space | Cloud templates have adequate storage. Check if the build is trying to cache unnecessarily. |
-| Go version mismatch | The cloud environment uses the latest Go LTS version. Check `.github/workflows` for CI Go version. |
+| ----- | -------- |
+| "Setup script failed: ..."       | Check build logs for specific error. Run the script locally to debug.                              |
+| Command not found (e.g., `task`) | The install command in the setup script should handle this. Check build logs.                      |
+| Slow build time                  | Remove `task lint` and `task test` from the script if not needed initially. Add them back later.   |
+| Out of disk space                | Cloud templates have adequate storage. Check if the build is trying to cache unnecessarily.        |
+| Go version mismatch              | The cloud environment uses the latest Go LTS version. Check `.github/workflows` for CI Go version. |
 
 ## Customizing Your Template
 

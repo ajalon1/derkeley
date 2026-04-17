@@ -123,11 +123,11 @@ Either way, the check is not repeated until the configured cooldown interval has
 ### Update check behavior
 
 | Situation | Behavior |
-|---|---|
-| No internet / registry unreachable | Silently skipped — plugin runs normally |
-| Plugin is already up to date | No prompt — plugin runs normally |
-| PATH-based or project-local plugin | Skipped — only managed plugins are checked |
-| Cooldown period has not elapsed | Skipped — plugin runs normally |
+| --------- | -------- |
+| No internet / registry unreachable | Silently skipped — plugin runs normally      |
+| Plugin is already up to date       | No prompt — plugin runs normally             |
+| PATH-based or project-local plugin | Skipped — only managed plugins are checked   |
+| Cooldown period has not elapsed    | Skipped — plugin runs normally               |
 
 ### Configuring the update check
 

@@ -107,13 +107,13 @@ The setup scripts use [Task](https://taskfile.dev/) - a modern alternative to Ma
 Key tasks (from `Taskfile.yaml`):
 
 | Task | Purpose |
-|------|---------|
-| `task dev-init` | Initialize dev environment, install tools |
-| `task lint` | Run all linters (formatting, go vet, golangci-lint, etc.) |
-| `task build` | Build the CLI binary to `./dist/dr` |
-| `task test` | Run full test suite with race detection |
-| `task run` | Run the CLI directly |
-| `task run -- <args>` | Run CLI with arguments |
+| ---- | ------- |
+| `task dev-init`      | Initialize dev environment, install tools                 |
+| `task lint`          | Run all linters (formatting, go vet, golangci-lint, etc.) |
+| `task build`         | Build the CLI binary to `./dist/dr`                       |
+| `task test`          | Run full test suite with race detection                   |
+| `task run`           | Run the CLI directly                                      |
+| `task run -- <args>` | Run CLI with arguments                                    |
 
 ### Customizing the Setup
 
@@ -140,12 +140,12 @@ task test-coverage  # Generate HTML coverage report
 ### Troubleshooting
 
 | Issue | Solution |
-|-------|----------|
-| **Setup fails with timeout** | Check the build logs. The full setup can take 3-5 min. If it exceeds 10 min, use the minimal script. |
+| ----- | -------- |
+| **Setup fails with timeout**     | Check the build logs. The full setup can take 3-5 min. If it exceeds 10 min, use the minimal script.         |
 | **Task not found after install** | The script installs to `.local/bin`. Ensure PATH is updated. Cloud environments typically have this in PATH. |
-| **Permission denied errors** | The minimal setup uses `.local/bin` instead of `/usr/local/bin` to avoid permission issues. |
-| **Out of disk space** | Cloud templates have ample storage. Check if Docker containers are not cleaned up from previous builds. |
-| **Go version mismatch** | Cloud environments use the latest Go LTS. The CLI should be compatible with Go 1.22+. |
+| **Permission denied errors**     | The minimal setup uses `.local/bin` instead of `/usr/local/bin` to avoid permission issues.                  |
+| **Out of disk space**            | Cloud templates have ample storage. Check if Docker containers are not cleaned up from previous builds.      |
+| **Go version mismatch**          | Cloud environments use the latest Go LTS. The CLI should be compatible with Go 1.22+.                        |
 
 ### Best Practices
 
@@ -169,4 +169,3 @@ task test-coverage  # Generate HTML coverage report
 3. Test it from a Factory session
 4. Share with your team
 5. Customize as needed for your workflow
-

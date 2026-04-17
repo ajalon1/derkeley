@@ -60,14 +60,14 @@ Complete list of files and resources for DataRobot CLI Cloud Template setup.
 ### "I want to..."
 
 | Goal | Read This | Use This |
-|------|-----------|----------|
-| Get started in 2 min | QUICK_START.md | cloud-template-setup-minimal.sh |
-| Set up team environment | CLOUD_TEMPLATE_GUIDE.md | cloud-template-setup.sh |
-| Understand everything | README.md | Both scripts |
-| Find a specific command | QUICK_START.md | See "Common Commands" |
-| Customize the setup | README.md | Edit either script |
-| Troubleshoot issues | CLOUD_TEMPLATE_GUIDE.md | See "Troubleshooting" section |
-| Share with teammates | QUICK_START.md | Copy the setup script |
+| ---- | --------- | -------- |
+| Get started in 2 min    | QUICK_START.md          | cloud-template-setup-minimal.sh |
+| Set up team environment | CLOUD_TEMPLATE_GUIDE.md | cloud-template-setup.sh         |
+| Understand everything   | README.md               | Both scripts                    |
+| Find a specific command | QUICK_START.md          | See "Common Commands"           |
+| Customize the setup     | README.md               | Edit either script              |
+| Troubleshoot issues     | CLOUD_TEMPLATE_GUIDE.md | See "Troubleshooting" section   |
+| Share with teammates    | QUICK_START.md          | Copy the setup script           |
 
 ## File Structure
 
@@ -137,12 +137,12 @@ task dev-init         # Initialize environment
 ## Troubleshooting Quick Links
 
 | Issue | Solution |
-|-------|----------|
-| Setup fails | → See CLOUD_TEMPLATE_GUIDE.md "Troubleshooting" |
-| Task not found | → Check PATH or restart terminal |
-| Need help | → Read README.md "Troubleshooting" table |
-| Want faster setup | → Use cloud-template-setup-minimal.sh |
-| Want validation | → Use cloud-template-setup.sh |
+| ----- | -------- |
+| Setup fails       | → See CLOUD_TEMPLATE_GUIDE.md "Troubleshooting"   |
+| Task not found    | → Check PATH or restart terminal                  |
+| Need help         | → Read README.md "Troubleshooting" table          |
+| Want faster setup | → Use cloud-template-setup-minimal.sh             |
+| Want validation   | → Use cloud-template-setup.sh                     |
 
 ## Tips
 

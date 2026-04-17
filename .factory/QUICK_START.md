@@ -110,11 +110,11 @@ task run -- version
 ## Troubleshooting
 
 | Problem | Fix |
-|---------|-----|
-| "Setup script failed" | Check build logs in Factory UI |
-| Task not found | Restart terminal or re-connect |
-| Slow build | Use Fast Setup option, add tests later |
-| Permissions error | Scripts use `.local/bin` which doesn't need sudo |
+| ------- | --- |
+| "Setup script failed" | Check build logs in Factory UI                   |
+| Task not found        | Restart terminal or re-connect                   |
+| Slow build            | Use Fast Setup option, add tests later           |
+| Permissions error     | Scripts use `.local/bin` which doesn't need sudo |
 
 ## Next Steps
 

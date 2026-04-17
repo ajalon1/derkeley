@@ -9,8 +9,8 @@ The DataRobot CLI stores your authentication credentials and preferences in conf
 
 The CLI automatically stores configuration files in a standard location based on your operating system:
 
-| Platform | Location                                        |
-|----------|-------------------------------------------------|
+| Platform | Location |
+| -------- | -------- |
 | Linux    | `~/.config/datarobot/drconfig.yaml`             |
 | macOS    | `~/.config/datarobot/drconfig.yaml`             |
 | Windows  | `%USERPROFILE%\.config\datarobot\drconfig.yaml` |
@@ -51,8 +51,8 @@ The CLI maintains a separate state file alongside `drconfig.yaml`:
 This file tracks runtime state that persists between CLI invocations:
 
 | Key | Description |
-|---|---|
-| `plugin_update_checks` | Map of plugin name → timestamp of the last update check |
+| --- | ----------- |
+| `plugin_update_checks` | Map of plugin name → timestamp of the last update check   |
 
 Example `state.yaml`:
 
