@@ -207,7 +207,7 @@ tasks:
         sh: date +%Y
       FROM_YEAR:
         sh: echo $(($(date +%Y) - 1))
-      FIND_GO_FILES: "find cmd internal main.go -type f -name '*.go'"
+      FIND_GO_FILES: "find cmd internal tui main.go -type f -name '*.go'"
       SED_EXPR: "s/Copyright {{.FROM_YEAR}} DataRobot/Copyright {{.TO_YEAR}} DataRobot/g"
       COUNT:
         sh: "{{.FIND_GO_FILES}} -exec grep -l 'Copyright {{.FROM_YEAR}} DataRobot' {} + 2>/dev/null | wc -l | tr -d ' '"

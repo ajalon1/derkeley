@@ -36,6 +36,7 @@ header:
     - 'internal/'
     - 'testutils/'
     - 'tools/'
+    - 'tui/'
     - 'main.go'
 
   paths-ignore:
