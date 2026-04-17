@@ -115,8 +115,8 @@ func createPluginCommand(p internalPlugin.DiscoveredPlugin) *cobra.Command {
 		DisableFlagParsing: true, // Pass all args to plugin
 		DisableSuggestions: true,
 		Annotations: map[string]string{
-			"telemetry:plugin_name":    manifest.Name,
-			"telemetry:plugin_version": manifest.Version,
+			"telemetry:plugin-name":    manifest.Name,
+			"telemetry:plugin-version": manifest.Version,
 		},
 		Run: func(_ *cobra.Command, args []string) {
 			checkAndPromptPluginUpdate(pluginName, manifest.Version, pluginPath)

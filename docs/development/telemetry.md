@@ -123,8 +123,8 @@ For commands that are discovered/registered at runtime (e.g., plugin commands), 
 ```go
 // In createPluginCommand or wherever the command is created:
 cmd.Annotations = map[string]string{
-    "telemetry:plugin_name":    pluginName,
-    "telemetry:plugin_version": pluginVersion,
+    "telemetry:plugin-name":    pluginName,
+    "telemetry:plugin-version": pluginVersion,
 }
 ```
 
