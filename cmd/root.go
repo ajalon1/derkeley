@@ -71,7 +71,7 @@ using pre-built templates. Get from idea to production in minutes, not hours.
 
 💡 ` + tui.BaseTextStyle.Render("New to AI development?") + ` Perfect! Run 'dr start' and we'll guide you through everything.`,
 		// Show help by default when no subcommands match
-		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			// PersistentPreRunE is a hook called after flags are parsed
 			// but before the command is run. Any logic that needs to happen
 			// before ANY command execution should go here.
@@ -93,6 +93,9 @@ using pre-built templates. Get from idea to production in minutes, not hours.
 
 			// Store telemetry client in context for use by commands
 			cmd.SetContext(context.WithValue(cmd.Context(), telemetryClientKey{}, client))
+
+			// Fire telemetry event for this command (safe before RunE which may call os.Exit)
+			fireCommandEvent(cmd, args, client)
 
 			config.SetAPIConsumerTrace(config.CommandPathToTrace(cmd.CommandPath()))
 

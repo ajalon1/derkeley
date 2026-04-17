@@ -1,85 +1,166 @@
-# Telemetry
+# Telemetry Event Wiring
 
-The CLI collects anonymous usage analytics via [Amplitude](https://amplitude.com/) to help the DataRobot team understand how the tool is used.
+This document explains how telemetry events are wired to CLI commands and how to add telemetry for new commands.
 
-## How it works
+## Overview
 
-Telemetry is implemented in `internal/telemetry/`. On each CLI invocation a `Client` is created with a set of `CommonProperties`, events are queued via `Client.Track()`, and the queue is flushed at process exit via `Client.Flush()`.
+Telemetry events are fired declaratively in `cmd/telemetry_events.go`. The wiring mechanism is centralized in `cmd/root.go`'s `PersistentPreRunE` hook, which fires the appropriate event before the command's business logic runs.
 
-When telemetry is disabled or the Amplitude API key is absent (all dev builds), every operation is a safe no-op — events are logged to the debug logger instead of being sent over the network.
+This approach ensures:
+- **Declarative**: All wirings are visible in one place (`telemetryEventMap`)
+- **Safe**: Events fire in `PersistentPreRunE` before commands that call `os.Exit` directly
+- **Minimal code**: No changes needed to individual command files
+- **Extensible**: Adding a new event requires only one map entry
 
-## Opting out
+## Architecture
 
-Users can disable telemetry in three ways, in order of precedence:
+```
+User invokes command
+    ↓
+Cobra parses flags
+    ↓
+PersistentPreRunE (root.go)
+    ├─ Initialize telemetry client
+    ├─ Lookup command in telemetryEventMap
+    └─ Fire event via client.Track()
+    ↓
+RunE / Run executes (may call os.Exit)
+    ↓
+PersistentPostRunE (root.go)
+    └─ Flush telemetry (3-second timeout)
+```
 
-| Method | How |
-|---|---|
-| Flag | `dr --disable-telemetry <command>` |
-| Environment variable | `DATAROBOT_CLI_DISABLE_TELEMETRY=true` |
-| Config file | `disable-telemetry: true` in `drconfig.yaml` |
+The telemetry client is stored in the command's context for access by subcommands and packages. Common properties (session ID, CLI version, user ID, environment, template name, etc.) are automatically merged into every event by `client.Track()`.
 
-## Device ID
+## How to Add Telemetry to a New Command
 
-Amplitude requires a `device_id` or `user_id` on every event. The CLI uses a stable device identifier obtained in this order:
+### 1. Identify the Event and Command Path
 
-1. **OS-provided machine ID** — via [`github.com/denisbrodbeck/machineid`](https://github.com/denisbrodbeck/machineid), which reads:
-   - `IOPlatformUUID` on macOS
-   - `/etc/machine-id` on Linux
-   - `HKLM\SOFTWARE\Microsoft\Cryptography\MachineGuid` on Windows
+First, determine:
+- The event type (e.g., `"dr dotenv setup"`)
+- The parameters the event should include (e.g., `template_name`)
+- How to extract those parameters from the command or arguments
 
-   The raw value is HMAC-SHA256'd with the app ID `"dr"` before use, so the actual system identifier is never sent to Amplitude.
+### 2. Create an Event Constructor (if not already present)
 
-2. **Persisted random UUID** — if the OS identifier is unavailable, a random UUID is generated and written to `~/.config/datarobot/device_id` (respects `$XDG_CONFIG_HOME`). The same value is reused on subsequent invocations.
-
-3. **Session-scoped fallback** — if the config directory is also inaccessible, a fresh ID prefixed with `"fallback-"` is generated for that session only.
-
-## Adding a new event
-
-All event constructors live in `internal/telemetry/events.go`. Add a new function following the existing pattern:
+Add a typed constructor to `internal/telemetry/events.go`:
 
 ```go
-func NewMyCommandEvent(param string) types.Event {
+func NewDrFooBarEvent(param1, param2 string) types.Event {
     return types.Event{
-        EventType: "dr my command",
+        EventType: "dr foo bar",
         EventProperties: map[string]any{
-            "param": param,
+            "param_1": param1,
+            "param_2": param2,
         },
     }
 }
 ```
 
-Then call it from the command's `RunE` or `PersistentPostRunE`:
+Also add a test in `internal/telemetry/events_test.go`.
+
+### 3. Wire the Command in `cmd/telemetry_events.go`
+
+Add an entry to `telemetryEventMap`:
 
 ```go
-telemetryClient.Track(telemetry.NewMyCommandEvent(param))
+"dr foo bar": func(cmd *cobra.Command, args []string) types.Event {
+    // Extract parameters from cmd flags or args
+    return telemetry.NewDrFooBarEvent(firstArg(args), "")
+},
 ```
 
-Common properties (`session_id`, `device_id`, `cli_version`, `os_info`, etc.) are merged automatically by `Client.Track()` — do not add them to individual event constructors.
+**Common patterns:**
 
-## Common properties
+- **Simple command with no parameters:**
+  ```go
+  "dr foo": func(*cobra.Command, []string) types.Event { 
+      return telemetry.NewDrFooEvent("") 
+  },
+  ```
 
-The following are attached to every event:
+- **Command with argument:**
+  ```go
+  "dr foo bar": func(_ *cobra.Command, args []string) types.Event { 
+      return telemetry.NewDrFooBarEvent(firstArg(args), "") 
+  },
+  ```
 
-### Top-level event fields
+- **Command with flag:**
+  ```go
+  "dr foo bar": func(cmd *cobra.Command, _ []string) types.Event { 
+      val, _ := cmd.Flags().GetString("flag-name")
+      return telemetry.NewDrFooBarEvent(val, "") 
+  },
+  ```
 
-| Field | Source |
-|---|---|
-| `user_id` | DataRobot user ID from the API (empty if unauthenticated) |
-| `device_id` | OS machine ID (hashed) or persisted UUID — see [Device ID](#device-id) above |
+### 4. Test the Wiring
 
-### Event properties
+Add a test in `cmd/telemetry_events_test.go` (create if it doesn't exist):
 
-| Property | Source |
-|---|---|
-| `session_id` | Random UUID generated once per process invocation |
-| `user_id` | Same as the top-level `user_id` field |
-| `cli_version` | Set at build time via ldflags |
-| `install_method` | Set at build time via ldflags (`release`, `source`, etc.) |
-| `os_info` | `runtime.GOOS/runtime.GOARCH` |
-| `environment` | `US`, `EU`, `JP`, or `custom` — derived from endpoint URL |
-| `datarobot_instance` | Base URL of the configured DataRobot instance |
-| `template_name` | Best-effort from `.datarobot/answers/` in the current repo |
+```go
+func TestTelemetryEventMap_DrFooBar(t *testing.T) {
+    cmd := &cobra.Command{
+        Use: "bar",
+        // ... other fields ...
+    }
+    cmd.Flags().String("my-flag", "default", "Help text")
+    _ = cmd.Flags().Set("my-flag", "test-value")
 
-## Dev builds
+    factory, ok := telemetryEventMap["dr foo bar"]
+    assert.True(t, ok)
 
-`AmplitudeAPIKey` is empty in dev builds (it is injected via ldflags in release builds only). When the key is empty, `IsEnabled()` returns `false` and all `Track` calls log to the debug logger. Run with `--debug` to see telemetry events in `.dr-tui-debug.log`.
+    event := factory(cmd, []string{"arg1"})
+    assert.Equal(t, "dr foo bar", event.EventType)
+    assert.Equal(t, "arg1", event.EventProperties["param_1"])
+}
+```
+
+## Special Case: Dynamic Commands (Plugins)
+
+For commands that are discovered/registered at runtime (e.g., plugin commands), use **cobra annotations** instead of the static map:
+
+```go
+// In createPluginCommand or wherever the command is created:
+cmd.Annotations = map[string]string{
+    "telemetry:plugin_name":    pluginName,
+    "telemetry:plugin_version": pluginVersion,
+}
+```
+
+The `fireCommandEvent` function in `cmd/telemetry_events.go` checks for these annotations and fires `NewDrPluginExecuteEvent` automatically.
+
+## Template Name Handling
+
+You may notice that event constructors are called with `template_name=""`. This is intentional:
+
+- The telemetry client automatically detects the template name by scanning `.datarobot/answers/` in the repository
+- This value is merged into `CommonProperties` and included in every event
+- There's no need to extract it per-command; it's detected once per CLI invocation and reused
+
+If you need a different template name for a specific event, pass it explicitly to the event constructor.
+
+## Testing
+
+Run the telemetry test suite:
+
+```bash
+task test -- internal/telemetry/...
+```
+
+To test wiring in an integration context:
+
+```bash
+# Dry-run mode shows events without sending them
+DATAROBOT_CLI_DISABLE_TELEMETRY=false dr <command> --help
+```
+
+Events will be logged to the debug logger (`.dr-tui-debug.log` if `--debug` is set).
+
+## Cleanup
+
+- **Changing a command name?** Update the key in `telemetryEventMap`.
+- **Removing a command?** Remove the entry from `telemetryEventMap`.
+- **Changing event properties?** Update the event constructor and its tests.
+
+All changes are localized to `cmd/telemetry_events.go` and `internal/telemetry/events.go`.
