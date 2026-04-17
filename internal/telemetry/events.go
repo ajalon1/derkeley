@@ -20,20 +20,20 @@ import "github.com/amplitude/analytics-go/amplitude/types"
 // Each function returns an amplitude.Event with the correct EventType
 // and expected property keys. Call-site wiring happens in PR 2.
 
-// NewDrStartEvent creates a "dr start execute" event.
+// NewDrStartEvent creates a "dr start" event.
 func NewDrStartEvent(templateName string) types.Event {
 	return types.Event{
-		EventType: "dr start execute",
+		EventType: "dr start",
 		EventProperties: map[string]any{
 			"template_name": templateName,
 		},
 	}
 }
 
-// NewDrRunEvent creates a "dr run execute" event.
+// NewDrRunEvent creates a "dr run" event.
 func NewDrRunEvent(templateName, taskName string) types.Event {
 	return types.Event{
-		EventType: "dr run execute",
+		EventType: "dr run",
 		EventProperties: map[string]any{
 			"template_name": templateName,
 			"task_name":     taskName,
@@ -41,10 +41,10 @@ func NewDrRunEvent(templateName, taskName string) types.Event {
 	}
 }
 
-// NewDrTaskEvent creates a "dr task execute" event.
+// NewDrTaskEvent creates a "dr task" event.
 func NewDrTaskEvent(templateName, taskName string) types.Event {
 	return types.Event{
-		EventType: "dr task execute",
+		EventType: "dr task",
 		EventProperties: map[string]any{
 			"template_name": templateName,
 			"task_name":     taskName,

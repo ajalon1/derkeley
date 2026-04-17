@@ -23,14 +23,14 @@ import (
 func TestNewDrStartEvent(t *testing.T) {
 	event := NewDrStartEvent("base")
 
-	assert.Equal(t, "dr start execute", event.EventType)
+	assert.Equal(t, "dr start", event.EventType)
 	assert.Equal(t, "base", event.EventProperties["template_name"])
 }
 
 func TestNewDrRunEvent(t *testing.T) {
 	event := NewDrRunEvent("base", "dev")
 
-	assert.Equal(t, "dr run execute", event.EventType)
+	assert.Equal(t, "dr run", event.EventType)
 	assert.Equal(t, "base", event.EventProperties["template_name"])
 	assert.Equal(t, "dev", event.EventProperties["task_name"])
 }
@@ -38,7 +38,7 @@ func TestNewDrRunEvent(t *testing.T) {
 func TestNewDrTaskEvent(t *testing.T) {
 	event := NewDrTaskEvent("base", "build")
 
-	assert.Equal(t, "dr task execute", event.EventType)
+	assert.Equal(t, "dr task", event.EventType)
 	assert.Equal(t, "base", event.EventProperties["template_name"])
 	assert.Equal(t, "build", event.EventProperties["task_name"])
 }
