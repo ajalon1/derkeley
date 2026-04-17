@@ -62,8 +62,8 @@ func fireCommandEvent(cmd *cobra.Command, args []string, client *telemetry.Clien
 	}
 
 	// Dynamic plugin commands declare their metadata via annotations.
-	if name, ok := cmd.Annotations["telemetry:plugin_name"]; ok {
-		version := cmd.Annotations["telemetry:plugin_version"]
+	if name, ok := cmd.Annotations["telemetry:plugin-name"]; ok {
+		version := cmd.Annotations["telemetry:plugin-version"]
 		client.Track(telemetry.NewDrPluginExecuteEvent(name, version))
 	}
 }
