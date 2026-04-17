@@ -42,5 +42,6 @@ header:
   paths-ignore:
     - 'internal/task/Taskfile.tmpl.yaml'
     - 'internal/copier/readme/*.md'
+    - '*.sum'
 
   comment: on-failure
