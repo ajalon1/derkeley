@@ -282,6 +282,12 @@ func filePrompts(yamlFile string) ([]UserPrompt, error) {
 		return nil, fmt.Errorf("Failed to read task yaml file %s: %w", yamlFile, err)
 	}
 
+	if !looksLikePromptFile(data) {
+		log.Debugf("Skipping non-prompt yaml file %s", yamlFile)
+
+		return nil, nil
+	}
+
 	var fileParsed ParsedYaml
 
 	if err = yaml.Unmarshal(data, &fileParsed); err != nil {
@@ -347,6 +353,47 @@ func rootSections(fileParsed ParsedYaml) []string {
 	}
 
 	return slices.Sorted(maps.Keys(keys))
+}
+
+// looksLikePromptFile inspects the root YAML shape to determine whether a file
+// is a prompt-definition file (a mapping of section name -> sequence of prompt
+// entries). Files whose root is a scalar or a sequence, or whose mapping values
+// are not sequences of mappings, are treated as non-prompt config files and
+// skipped silently. This avoids noisy unmarshal errors on copier answer files,
+// version manifests, and other YAML that happens to live under .datarobot/.
+func looksLikePromptFile(data []byte) bool {
+	var root yaml.Node
+
+	if err := yaml.Unmarshal(data, &root); err != nil {
+		// malformed YAML: let the real unmarshal surface the error
+		return true
+	}
+
+	if len(root.Content) == 0 {
+		return false
+	}
+
+	doc := root.Content[0]
+	if doc.Kind != yaml.MappingNode || len(doc.Content) == 0 {
+		return false
+	}
+
+	// mapping content alternates key, value, key, value...
+	// every value must be a sequence of mappings to qualify as a prompt file.
+	for i := 1; i < len(doc.Content); i += 2 {
+		v := doc.Content[i]
+		if v.Kind != yaml.SequenceNode {
+			return false
+		}
+
+		for _, item := range v.Content {
+			if item.Kind != yaml.MappingNode {
+				return false
+			}
+		}
+	}
+
+	return true
 }
 
 // childSections is used only for determining sort order of prompts.
