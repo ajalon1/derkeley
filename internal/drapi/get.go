@@ -17,13 +17,25 @@ package drapi
 import (
 	"context"
 	"encoding/json"
-	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/datarobot/cli/internal/config"
 	"github.com/datarobot/cli/internal/log"
 )
+
+// HTTPError is returned by Get when the server responds with a non-200 status code.
+// Callers can extract the status code with errors.As to make decisions without string matching.
+type HTTPError struct {
+	StatusCode int
+	URL        string
+}
+
+// Error implements the error interface for HTTPError.
+func (e *HTTPError) Error() string {
+	return fmt.Sprintf("HTTP error: %d %s (url: %s)", e.StatusCode, http.StatusText(e.StatusCode), e.URL)
+}
 
 var token string
 
@@ -67,7 +79,8 @@ func Get(url, info string) (*http.Response, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		resp.Body.Close()
-		return nil, errors.New("Response status code is " + resp.Status + ".")
+
+		return nil, &HTTPError{StatusCode: resp.StatusCode, URL: url}
 	}
 
 	return resp, err
