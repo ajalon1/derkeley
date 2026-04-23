@@ -17,23 +17,12 @@ package get
 import (
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/datarobot/cli/internal/auth"
 	"github.com/datarobot/cli/internal/workload"
 	"github.com/datarobot/cli/tui"
 	"github.com/spf13/cobra"
 )
-
-type ArtifactOutput struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	Status    string `json:"status"`
-	Version   string `json:"version"`
-	Catalog   string `json:"catalog"`
-	CreatedAt string `json:"createdAt"`
-	UpdatedAt string `json:"updatedAt"`
-}
 
 func Cmd() *cobra.Command {
 	var outputFormat string
@@ -81,22 +70,7 @@ Example:
 }
 
 func printJSON(artifact workload.Artifact) error {
-	codeRef := workload.ExtractCodeRef(artifact)
-
-	output := ArtifactOutput{
-		ID:        artifact.ID,
-		Name:      artifact.Name,
-		Status:    artifact.Status,
-		CreatedAt: artifact.CreatedAt.Format(time.RFC3339),
-		UpdatedAt: artifact.UpdatedAt.Format(time.RFC3339),
-	}
-
-	if codeRef != nil {
-		output.Version = codeRef.CatalogVersionID
-		output.Catalog = codeRef.CatalogID
-	}
-
-	data, err := json.MarshalIndent(output, "", "  ")
+	data, err := json.MarshalIndent(workload.NewArtifactOutput(artifact), "", "  ")
 	if err != nil {
 		return err
 	}
@@ -109,19 +83,19 @@ func printJSON(artifact workload.Artifact) error {
 func printHuman(artifact workload.Artifact) {
 	codeRef := workload.ExtractCodeRef(artifact)
 
-	version := "\u2014"
-	catalog := "\u2014"
+	catalogID := "\u2014"
+	versionID := "\u2014"
 
 	if codeRef != nil {
-		version = codeRef.CatalogVersionID
-		catalog = codeRef.CatalogID
+		catalogID = codeRef.CatalogID
+		versionID = codeRef.CatalogVersionID
 	}
 
-	fmt.Println(tui.BaseTextStyle.Render("ID:       " + artifact.ID))
-	fmt.Println(tui.BaseTextStyle.Render("Name:     " + artifact.Name))
-	fmt.Println(tui.BaseTextStyle.Render("Status:   " + artifact.Status))
-	fmt.Println(tui.BaseTextStyle.Render("Version:  " + version))
-	fmt.Println(tui.BaseTextStyle.Render("Catalog:  " + catalog))
-	fmt.Println(tui.DimStyle.Render("Created:  " + artifact.CreatedAt.UTC().Format("2006-01-02 15:04 UTC")))
-	fmt.Println(tui.DimStyle.Render("Updated:  " + artifact.UpdatedAt.UTC().Format("2006-01-02 15:04 UTC")))
+	fmt.Println(tui.BaseTextStyle.Render("ID:          " + artifact.ID))
+	fmt.Println(tui.BaseTextStyle.Render("Name:        " + artifact.Name))
+	fmt.Println(tui.BaseTextStyle.Render("Status:      " + artifact.Status))
+	fmt.Println(tui.BaseTextStyle.Render("Catalog ID:  " + catalogID))
+	fmt.Println(tui.BaseTextStyle.Render("Version ID:  " + versionID))
+	fmt.Println(tui.DimStyle.Render("Created:     " + artifact.CreatedAt.UTC().Format("2006-01-02 15:04 UTC")))
+	fmt.Println(tui.DimStyle.Render("Updated:     " + artifact.UpdatedAt.UTC().Format("2006-01-02 15:04 UTC")))
 }

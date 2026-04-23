@@ -84,8 +84,8 @@ func TestPrintJSON_WithCodeRef(t *testing.T) {
 	assert.Equal(t, "art-abc-123", parsed["id"])
 	assert.Equal(t, "my-agent", parsed["name"])
 	assert.Equal(t, "DRAFT", parsed["status"])
-	assert.Equal(t, "fedcba09", parsed["version"])
-	assert.Equal(t, "cat-xyz-789", parsed["catalog"])
+	assert.Equal(t, "fedcba09", parsed["versionId"])
+	assert.Equal(t, "cat-xyz-789", parsed["catalogId"])
 	assert.Equal(t, "2026-04-01T08:00:00Z", parsed["createdAt"])
 	assert.Equal(t, "2026-04-10T14:30:00Z", parsed["updatedAt"])
 }
@@ -109,8 +109,8 @@ func TestPrintJSON_WithoutCodeRef(t *testing.T) {
 
 	err := json.Unmarshal([]byte(output), &parsed)
 	require.NoError(t, err)
-	assert.Empty(t, parsed["version"])
-	assert.Empty(t, parsed["catalog"])
+	assert.Empty(t, parsed["versionId"])
+	assert.Empty(t, parsed["catalogId"])
 }
 
 func TestPrintHuman_WithCodeRef(t *testing.T) {
@@ -142,13 +142,13 @@ func TestPrintHuman_WithCodeRef(t *testing.T) {
 		printHuman(artifact)
 	})
 
-	assert.Contains(t, output, "ID:       art-abc-123")
-	assert.Contains(t, output, "Name:     my-agent")
-	assert.Contains(t, output, "Status:   DRAFT")
-	assert.Contains(t, output, "Version:  fedcba09")
-	assert.Contains(t, output, "Catalog:  cat-xyz-789")
-	assert.Contains(t, output, "Created:  2026-04-01 08:00 UTC")
-	assert.Contains(t, output, "Updated:  2026-04-10 14:30 UTC")
+	assert.Contains(t, output, "ID:          art-abc-123")
+	assert.Contains(t, output, "Name:        my-agent")
+	assert.Contains(t, output, "Status:      DRAFT")
+	assert.Contains(t, output, "Catalog ID:  cat-xyz-789")
+	assert.Contains(t, output, "Version ID:  fedcba09")
+	assert.Contains(t, output, "Created:     2026-04-01 08:00 UTC")
+	assert.Contains(t, output, "Updated:     2026-04-10 14:30 UTC")
 }
 
 func TestPrintHuman_WithoutCodeRef(t *testing.T) {
@@ -165,8 +165,8 @@ func TestPrintHuman_WithoutCodeRef(t *testing.T) {
 		printHuman(artifact)
 	})
 
-	assert.Contains(t, output, "Version:  \u2014")
-	assert.Contains(t, output, "Catalog:  \u2014")
+	assert.Contains(t, output, "Catalog ID:  \u2014")
+	assert.Contains(t, output, "Version ID:  \u2014")
 }
 
 func TestCmd_RequiresArg(t *testing.T) {

@@ -124,3 +124,29 @@ func TestExtractCodeRef_NotInResponse(t *testing.T) {
 
 	assert.Nil(t, ExtractCodeRef(artifact))
 }
+
+func TestParseArtifactStatus(t *testing.T) {
+	cases := []struct {
+		in   string
+		want string
+	}{
+		{"", ""},
+		{"draft", "draft"},
+		{"DRAFT", "draft"},
+		{"Locked", "locked"},
+		{"locked", "locked"},
+	}
+
+	for _, c := range cases {
+		got, err := ParseArtifactStatus(c.in)
+		require.NoError(t, err, "input %q", c.in)
+		assert.Equal(t, c.want, got, "input %q", c.in)
+	}
+}
+
+func TestParseArtifactStatus_Invalid(t *testing.T) {
+	_, err := ParseArtifactStatus("bogus")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid status")
+	assert.Contains(t, err.Error(), "bogus")
+}
