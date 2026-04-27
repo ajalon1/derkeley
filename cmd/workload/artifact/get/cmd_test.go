@@ -17,8 +17,6 @@ package get
 import (
 	"bytes"
 	"encoding/json"
-	"io"
-	"os"
 	"testing"
 	"time"
 
@@ -27,27 +25,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func captureStdout(t *testing.T, fn func()) string {
-	t.Helper()
-
-	old := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
-	fn()
-
-	w.Close()
-
-	os.Stdout = old
-
-	var buf bytes.Buffer
-
-	_, _ = io.Copy(&buf, r)
-
-	return buf.String()
-}
-
-func TestPrintJSON_WithCodeRef(t *testing.T) {
+func TestArtifactJSONRenderer_WithCodeRef(t *testing.T) {
 	artifact := workload.Artifact{
 		ID:     "art-abc-123",
 		Name:   "my-agent",
@@ -72,14 +50,14 @@ func TestPrintJSON_WithCodeRef(t *testing.T) {
 		UpdatedAt: time.Date(2026, 4, 10, 14, 30, 0, 0, time.UTC),
 	}
 
-	output := captureStdout(t, func() {
-		err := printJSON(artifact)
-		require.NoError(t, err)
-	})
+	var buf bytes.Buffer
+
+	err := workload.ArtifactJSONRenderer{}.Render(&buf, artifact)
+	require.NoError(t, err)
 
 	var parsed map[string]interface{}
 
-	err := json.Unmarshal([]byte(output), &parsed)
+	err = json.Unmarshal(buf.Bytes(), &parsed)
 	require.NoError(t, err)
 	assert.Equal(t, "art-abc-123", parsed["id"])
 	assert.Equal(t, "my-agent", parsed["name"])
@@ -90,7 +68,7 @@ func TestPrintJSON_WithCodeRef(t *testing.T) {
 	assert.Equal(t, "2026-04-10T14:30:00Z", parsed["updatedAt"])
 }
 
-func TestPrintJSON_WithoutCodeRef(t *testing.T) {
+func TestArtifactJSONRenderer_WithoutCodeRef(t *testing.T) {
 	artifact := workload.Artifact{
 		ID:        "art-abc-123",
 		Name:      "my-agent",
@@ -100,20 +78,20 @@ func TestPrintJSON_WithoutCodeRef(t *testing.T) {
 		UpdatedAt: time.Date(2026, 4, 10, 14, 30, 0, 0, time.UTC),
 	}
 
-	output := captureStdout(t, func() {
-		err := printJSON(artifact)
-		require.NoError(t, err)
-	})
+	var buf bytes.Buffer
+
+	err := workload.ArtifactJSONRenderer{}.Render(&buf, artifact)
+	require.NoError(t, err)
 
 	var parsed map[string]interface{}
 
-	err := json.Unmarshal([]byte(output), &parsed)
+	err = json.Unmarshal(buf.Bytes(), &parsed)
 	require.NoError(t, err)
 	assert.Empty(t, parsed["versionId"])
 	assert.Empty(t, parsed["catalogId"])
 }
 
-func TestPrintHuman_WithCodeRef(t *testing.T) {
+func TestArtifactRenderer_WithCodeRef(t *testing.T) {
 	artifact := workload.Artifact{
 		ID:     "art-abc-123",
 		Name:   "my-agent",
@@ -138,20 +116,30 @@ func TestPrintHuman_WithCodeRef(t *testing.T) {
 		UpdatedAt: time.Date(2026, 4, 10, 14, 30, 0, 0, time.UTC),
 	}
 
-	output := captureStdout(t, func() {
-		printHuman(artifact)
-	})
+	var buf bytes.Buffer
 
-	assert.Contains(t, output, "ID:          art-abc-123")
-	assert.Contains(t, output, "Name:        my-agent")
-	assert.Contains(t, output, "Status:      DRAFT")
-	assert.Contains(t, output, "Catalog ID:  cat-xyz-789")
-	assert.Contains(t, output, "Version ID:  fedcba09")
-	assert.Contains(t, output, "Created:     2026-04-01 08:00 UTC")
-	assert.Contains(t, output, "Updated:     2026-04-10 14:30 UTC")
+	err := workload.ArtifactRenderer{}.Render(&buf, artifact)
+	require.NoError(t, err)
+
+	output := buf.String()
+
+	assert.Contains(t, output, "ID:")
+	assert.Contains(t, output, "art-abc-123")
+	assert.Contains(t, output, "Name:")
+	assert.Contains(t, output, "my-agent")
+	assert.Contains(t, output, "Status:")
+	assert.Contains(t, output, "DRAFT")
+	assert.Contains(t, output, "Catalog ID:")
+	assert.Contains(t, output, "cat-xyz-789")
+	assert.Contains(t, output, "Version ID:")
+	assert.Contains(t, output, "fedcba09")
+	assert.Contains(t, output, "Created:")
+	assert.Contains(t, output, "2026-04-01 08:00 UTC")
+	assert.Contains(t, output, "Updated:")
+	assert.Contains(t, output, "2026-04-10 14:30 UTC")
 }
 
-func TestPrintHuman_WithoutCodeRef(t *testing.T) {
+func TestArtifactRenderer_WithoutCodeRef(t *testing.T) {
 	artifact := workload.Artifact{
 		ID:        "art-abc-123",
 		Name:      "my-agent",
@@ -161,12 +149,16 @@ func TestPrintHuman_WithoutCodeRef(t *testing.T) {
 		UpdatedAt: time.Date(2026, 4, 10, 14, 30, 0, 0, time.UTC),
 	}
 
-	output := captureStdout(t, func() {
-		printHuman(artifact)
-	})
+	var buf bytes.Buffer
 
-	assert.Contains(t, output, "Catalog ID:  \u2014")
-	assert.Contains(t, output, "Version ID:  \u2014")
+	err := workload.ArtifactRenderer{}.Render(&buf, artifact)
+	require.NoError(t, err)
+
+	output := buf.String()
+
+	assert.Contains(t, output, "Catalog ID:")
+	assert.Contains(t, output, "—")
+	assert.Contains(t, output, "Version ID:")
 }
 
 func TestCmd_RequiresArg(t *testing.T) {

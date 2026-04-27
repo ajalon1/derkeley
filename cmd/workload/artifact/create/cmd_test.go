@@ -17,7 +17,6 @@ package create
 import (
 	"bytes"
 	"encoding/json"
-	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -27,26 +26,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func captureStdout(t *testing.T, fn func()) string {
-	t.Helper()
-
-	old := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
-	fn()
-
-	w.Close()
-
-	os.Stdout = old
-
-	var buf bytes.Buffer
-
-	_, _ = io.Copy(&buf, r)
-
-	return buf.String()
-}
 
 func makeArtifact(catalogID, catalogVersionID string) workload.Artifact {
 	a := workload.Artifact{
@@ -102,7 +81,7 @@ func TestReadSpecFile_InvalidJSON(t *testing.T) {
 
 	_, err := readSpecFile(path)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid JSON:")
+	assert.Contains(t, err.Error(), "invalid spec:")
 }
 
 func TestReadSpecFile_Valid(t *testing.T) {
@@ -114,43 +93,85 @@ func TestReadSpecFile_Valid(t *testing.T) {
 	assert.Equal(t, content, string(got))
 }
 
-func TestPrintHuman_WithCodeRef(t *testing.T) {
-	artifact := makeArtifact("cat-xyz-789", "fedcba09")
+func TestReadSpecFile_MissingName(t *testing.T) {
+	content := `{"spec":{"containerGroups":[{"containers":[{}]}]}}`
+	path := writeTempFile(t, content)
 
-	output := captureStdout(t, func() {
-		printHuman(artifact)
-	})
-
-	assert.Contains(t, output, "ID:          art-abc-123")
-	assert.Contains(t, output, "Name:        my-agent")
-	assert.Contains(t, output, "Status:      draft")
-	assert.Contains(t, output, "Catalog ID:  cat-xyz-789")
-	assert.Contains(t, output, "Version ID:  fedcba09")
-	assert.Contains(t, output, "Created:     2026-04-01 08:00 UTC")
-	assert.Contains(t, output, "Updated:     2026-04-10 14:30 UTC")
+	_, err := readSpecFile(path)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "required field 'name' is missing")
 }
 
-func TestPrintHuman_WithoutCodeRef(t *testing.T) {
+func TestReadSpecFile_EmptyContainerGroups(t *testing.T) {
+	content := `{"name":"x","spec":{"containerGroups":[]}}`
+	path := writeTempFile(t, content)
+
+	_, err := readSpecFile(path)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "containerGroups")
+}
+
+func TestReadSpecFile_UnknownFields(t *testing.T) {
+	content := `{"name":"x","spec":{"containerGroups":[{"containers":[{}]}]},"unknown":"field"}`
+	path := writeTempFile(t, content)
+
+	_, err := readSpecFile(path)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown field")
+}
+
+func TestArtifactRenderer_WithCodeRef(t *testing.T) {
+	artifact := makeArtifact("cat-xyz-789", "fedcba09")
+
+	var buf bytes.Buffer
+
+	err := workload.ArtifactRenderer{}.Render(&buf, artifact)
+	require.NoError(t, err)
+
+	output := buf.String()
+
+	assert.Contains(t, output, "ID:")
+	assert.Contains(t, output, "art-abc-123")
+	assert.Contains(t, output, "Name:")
+	assert.Contains(t, output, "my-agent")
+	assert.Contains(t, output, "Status:")
+	assert.Contains(t, output, "draft")
+	assert.Contains(t, output, "Catalog ID:")
+	assert.Contains(t, output, "cat-xyz-789")
+	assert.Contains(t, output, "Version ID:")
+	assert.Contains(t, output, "fedcba09")
+	assert.Contains(t, output, "Created:")
+	assert.Contains(t, output, "2026-04-01 08:00 UTC")
+	assert.Contains(t, output, "Updated:")
+	assert.Contains(t, output, "2026-04-10 14:30 UTC")
+}
+
+func TestArtifactRenderer_WithoutCodeRef(t *testing.T) {
 	artifact := makeArtifact("", "")
 
-	output := captureStdout(t, func() {
-		printHuman(artifact)
-	})
+	var buf bytes.Buffer
 
-	assert.Contains(t, output, "Catalog ID:  \u2014")
-	assert.Contains(t, output, "Version ID:  \u2014")
+	err := workload.ArtifactRenderer{}.Render(&buf, artifact)
+	require.NoError(t, err)
+
+	output := buf.String()
+
+	assert.Contains(t, output, "Catalog ID:")
+	assert.Contains(t, output, "—")
+	assert.Contains(t, output, "Version ID:")
 }
 
-func TestPrintJSON(t *testing.T) {
+func TestArtifactJSONRenderer(t *testing.T) {
 	artifact := makeArtifact("cat-xyz-789", "fedcba09")
 
-	output := captureStdout(t, func() {
-		require.NoError(t, printJSON(artifact))
-	})
+	var buf bytes.Buffer
+
+	err := workload.ArtifactJSONRenderer{}.Render(&buf, artifact)
+	require.NoError(t, err)
 
 	var parsed map[string]any
 
-	require.NoError(t, json.Unmarshal([]byte(output), &parsed))
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &parsed))
 	assert.Equal(t, "art-abc-123", parsed["id"])
 	assert.Equal(t, "my-agent", parsed["name"])
 	assert.Equal(t, "draft", parsed["status"])
@@ -161,9 +182,10 @@ func TestPrintJSON(t *testing.T) {
 }
 
 func TestCmd_RejectsArgs(t *testing.T) {
+	path := writeTempFile(t, `{"name":"x","spec":{"containerGroups":[{"containers":[{}]}]}}`)
 	cmd := Cmd()
 	cmd.PreRunE = nil
-	cmd.SetArgs([]string{"unexpected-arg"})
+	cmd.SetArgs([]string{"--spec-file", path, "unexpected-arg"})
 
 	require.Error(t, cmd.Execute())
 }
@@ -175,13 +197,14 @@ func TestCmd_MissingSpecFile(t *testing.T) {
 
 	err := cmd.Execute()
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "--spec-file is required")
+	assert.Contains(t, err.Error(), "spec-file")
 }
 
 func TestCmd_InvalidOutputFormat(t *testing.T) {
+	path := writeTempFile(t, `{"name":"x","spec":{"containerGroups":[{"containers":[{}]}]}}`)
 	cmd := Cmd()
 	cmd.PreRunE = nil
-	cmd.SetArgs([]string{"--output", "yaml"})
+	cmd.SetArgs([]string{"--spec-file", path, "--output", "yaml"})
 
 	err := cmd.Execute()
 	require.Error(t, err)

@@ -15,12 +15,11 @@
 package get
 
 import (
-	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/datarobot/cli/internal/auth"
 	"github.com/datarobot/cli/internal/workload"
-	"github.com/datarobot/cli/tui"
 	"github.com/spf13/cobra"
 )
 
@@ -55,47 +54,14 @@ Example:
 			}
 
 			if outputFormat == "json" {
-				return printJSON(*artifact)
+				return workload.ArtifactJSONRenderer{}.Render(os.Stdout, *artifact)
 			}
 
-			printHuman(*artifact)
-
-			return nil
+			return workload.ArtifactRenderer{}.Render(os.Stdout, *artifact)
 		},
 	}
 
 	cmd.Flags().StringVar(&outputFormat, "output", "", "Output format (json)")
 
 	return cmd
-}
-
-func printJSON(artifact workload.Artifact) error {
-	data, err := json.MarshalIndent(workload.NewArtifactOutput(artifact), "", "  ")
-	if err != nil {
-		return err
-	}
-
-	fmt.Println(string(data))
-
-	return nil
-}
-
-func printHuman(artifact workload.Artifact) {
-	codeRef := workload.ExtractCodeRef(artifact)
-
-	catalogID := "\u2014"
-	versionID := "\u2014"
-
-	if codeRef != nil {
-		catalogID = codeRef.CatalogID
-		versionID = codeRef.CatalogVersionID
-	}
-
-	fmt.Println(tui.BaseTextStyle.Render("ID:          " + artifact.ID))
-	fmt.Println(tui.BaseTextStyle.Render("Name:        " + artifact.Name))
-	fmt.Println(tui.BaseTextStyle.Render("Status:      " + artifact.Status))
-	fmt.Println(tui.BaseTextStyle.Render("Catalog ID:  " + catalogID))
-	fmt.Println(tui.BaseTextStyle.Render("Version ID:  " + versionID))
-	fmt.Println(tui.DimStyle.Render("Created:     " + artifact.CreatedAt.UTC().Format("2006-01-02 15:04 UTC")))
-	fmt.Println(tui.DimStyle.Render("Updated:     " + artifact.UpdatedAt.UTC().Format("2006-01-02 15:04 UTC")))
 }

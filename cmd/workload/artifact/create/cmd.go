@@ -22,7 +22,6 @@ import (
 
 	"github.com/datarobot/cli/internal/auth"
 	"github.com/datarobot/cli/internal/workload"
-	"github.com/datarobot/cli/tui"
 	"github.com/spf13/cobra"
 )
 
@@ -71,16 +70,8 @@ Example:
 				return fmt.Errorf("invalid output format: %s (supported: json)", outputFormat)
 			}
 
-			if specFile == "" {
-				return errors.New("--spec-file is required")
-			}
-
 			payload, err := readSpecFile(specFile)
 			if err != nil {
-				return err
-			}
-
-			if err := workload.ValidateCreateRequest(payload); err != nil {
 				return err
 			}
 
@@ -90,17 +81,16 @@ Example:
 			}
 
 			if outputFormat == "json" {
-				return printJSON(*artifact)
+				return workload.ArtifactJSONRenderer{}.Render(os.Stdout, *artifact)
 			}
 
-			printHuman(*artifact)
-
-			return nil
+			return workload.ArtifactRenderer{}.Render(os.Stdout, *artifact)
 		},
 	}
 
 	cmd.Flags().StringVar(&outputFormat, "output", "", "Output format (json)")
 	cmd.Flags().StringVar(&specFile, "spec-file", "", "Path to JSON spec file (required)")
+	_ = cmd.MarkFlagRequired("spec-file")
 
 	return cmd
 }
@@ -115,42 +105,9 @@ func readSpecFile(path string) (json.RawMessage, error) {
 		return nil, err
 	}
 
-	var probe map[string]any
-
-	if err := json.Unmarshal(data, &probe); err != nil {
-		return nil, fmt.Errorf("invalid JSON: %w", err)
+	if err := workload.ValidateCreateRequest(data); err != nil {
+		return nil, err
 	}
 
 	return json.RawMessage(data), nil
-}
-
-func printJSON(artifact workload.Artifact) error {
-	data, err := json.MarshalIndent(workload.NewArtifactOutput(artifact), "", "  ")
-	if err != nil {
-		return err
-	}
-
-	fmt.Println(string(data))
-
-	return nil
-}
-
-func printHuman(artifact workload.Artifact) {
-	codeRef := workload.ExtractCodeRef(artifact)
-
-	catalogID := "\u2014"
-	versionID := "\u2014"
-
-	if codeRef != nil {
-		catalogID = codeRef.CatalogID
-		versionID = codeRef.CatalogVersionID
-	}
-
-	fmt.Println(tui.BaseTextStyle.Render("ID:          " + artifact.ID))
-	fmt.Println(tui.BaseTextStyle.Render("Name:        " + artifact.Name))
-	fmt.Println(tui.BaseTextStyle.Render("Status:      " + artifact.Status))
-	fmt.Println(tui.BaseTextStyle.Render("Catalog ID:  " + catalogID))
-	fmt.Println(tui.BaseTextStyle.Render("Version ID:  " + versionID))
-	fmt.Println(tui.DimStyle.Render("Created:     " + artifact.CreatedAt.UTC().Format("2006-01-02 15:04 UTC")))
-	fmt.Println(tui.DimStyle.Render("Updated:     " + artifact.UpdatedAt.UTC().Format("2006-01-02 15:04 UTC")))
 }

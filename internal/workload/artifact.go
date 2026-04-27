@@ -19,12 +19,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/datarobot/cli/internal/config"
 	"github.com/datarobot/cli/internal/drapi"
+	"github.com/datarobot/cli/tui"
 )
 
 const (
@@ -250,4 +252,44 @@ func ListArtifacts(limit int, status string) ([]Artifact, error) {
 	}
 
 	return all, nil
+}
+
+// ArtifactRenderer renders an Artifact in human-readable format.
+type ArtifactRenderer struct{}
+
+// Render writes the artifact details to w in a formatted key-value layout.
+func (r ArtifactRenderer) Render(w io.Writer, artifact Artifact) error {
+	codeRef := ExtractCodeRef(artifact)
+	catalogID := "—"
+	versionID := "—"
+
+	if codeRef != nil {
+		catalogID = codeRef.CatalogID
+		versionID = codeRef.CatalogVersionID
+	}
+
+	return tui.PrintKeyValues(w,
+		tui.KeyValue{Label: "ID", Value: artifact.ID, Style: tui.BaseTextStyle},
+		tui.KeyValue{Label: "Name", Value: artifact.Name, Style: tui.BaseTextStyle},
+		tui.KeyValue{Label: "Status", Value: artifact.Status, Style: tui.BaseTextStyle},
+		tui.KeyValue{Label: "Catalog ID", Value: catalogID, Style: tui.BaseTextStyle},
+		tui.KeyValue{Label: "Version ID", Value: versionID, Style: tui.BaseTextStyle},
+		tui.KeyValue{Label: "Created", Value: artifact.CreatedAt.UTC().Format("2006-01-02 15:04 UTC"), Style: tui.DimStyle},
+		tui.KeyValue{Label: "Updated", Value: artifact.UpdatedAt.UTC().Format("2006-01-02 15:04 UTC"), Style: tui.DimStyle},
+	)
+}
+
+// ArtifactJSONRenderer renders an Artifact in JSON format.
+type ArtifactJSONRenderer struct{}
+
+// Render writes the artifact as formatted JSON to w.
+func (r ArtifactJSONRenderer) Render(w io.Writer, artifact Artifact) error {
+	data, err := json.MarshalIndent(NewArtifactOutput(artifact), "", "  ")
+	if err != nil {
+		return err
+	}
+
+	_, err = fmt.Fprintln(w, string(data))
+
+	return err
 }
