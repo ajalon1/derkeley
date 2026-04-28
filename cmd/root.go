@@ -204,6 +204,8 @@ func init() {
 
 // initializeConfig initializes the configuration by reading from
 // various sources such as environment variables and config files.
+// NOTE: Do not call viper.BindPFlags() here as that will slurp all
+// flags from all subcommands into viper.
 func initializeConfig(_ *cobra.Command) error {
 	var err error
 
@@ -241,12 +243,15 @@ func initializeConfig(_ *cobra.Command) error {
 		return fmt.Errorf("Failed to read config file: %w", err)
 	}
 
-	// NOTE: We deliberately do NOT call viper.BindPFlags(cmd.Flags()) here.
-	// Doing so would slurp every subcommand flag (e.g. --yes, --all,
-	// --if-needed) into viper.AllSettings(), causing transient flags to
-	// leak into drconfig.yaml whenever a write occurs. Persistent flags
-	// that need viper integration are bound explicitly above; subcommand
-	// flags should be read directly via cmd.Flags().GetX(...).
+	// NOTE: We used to call viper.BindPFlags(cmd.Flags()) here.
+	// This caused a problem where ALL flags from ALL subcommands would be
+	// included in viper.AllSettings(), which is used when writing back to
+	// the config file. This meant that transient flags like --yes, --all,
+	// and --if-needed would end up being saved to drconfig.yaml whenever
+	// any command was run that had those flags, which is not desirable.
+	// By not calling BindPFlags here, we ensure that only explicitly bound
+	// persistent flags are included in viper's settings, and subcommand
+	// flags are read directly from cmd.Flags() when needed.
 
 	return nil
 }
