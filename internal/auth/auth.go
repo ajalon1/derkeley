@@ -256,12 +256,9 @@ func WaitForAPIKeyCallback(ctx context.Context, datarobotHost string) (string, e
 }
 
 func WriteConfigFileSilent() error {
-	// Ensure the config directory and file exist before writing the config file
-	if err := config.CreateConfigFileDirIfNotExists(); err != nil {
-		return err
-	}
-
-	err := viper.WriteConfig()
+	// Only persist allowlisted keys (see config.PersistableKeys). This avoids
+	// writing transient flags such as --yes back to drconfig.yaml.
+	err := config.UpdateConfigFile()
 	if err != nil {
 		log.Error(err)
 		return err

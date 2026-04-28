@@ -240,13 +240,9 @@ func (m pulumiLoginModel) handlePassphraseAccepted() (tea.Model, tea.Cmd) {
 }
 
 func (m pulumiLoginModel) savePassphraseToConfig() error {
-	if err := config.CreateConfigFileDirIfNotExists(); err != nil {
-		return fmt.Errorf("failed to create config: %w", err)
-	}
-
 	viper.Set(pulumiConfigPassphraseKey, m.generatedPassphrase)
 
-	if err := viper.WriteConfig(); err != nil {
+	if err := config.UpdateConfigFile(pulumiConfigPassphraseKey); err != nil {
 		return fmt.Errorf("failed to write config: %w", err)
 	}
 

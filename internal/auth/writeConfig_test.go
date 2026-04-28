@@ -166,7 +166,7 @@ func TestWriteConfigFileSilent_PreservesExtraFields(t *testing.T) {
 	assert.Equal(t, 42, viper.GetInt("another_field"))
 }
 
-func TestWriteConfigFileSilent_FailsWhenMultipleFieldsChanged(t *testing.T) {
+func TestWriteConfigFileSilent_OnlyAllowlistedFieldsWritten(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "auth-test-*")
 	require.NoError(t, err)
 
@@ -220,14 +220,71 @@ func TestWriteConfigFileSilent_FailsWhenMultipleFieldsChanged(t *testing.T) {
 	err = yaml.Unmarshal(rawYaml, &configMap)
 	require.NoError(t, err)
 
-	// This test verifies that WriteConfigFileSilent DOES write all changes
-	// (not just the token), which means the caller must be careful to only
-	// modify the token field before calling it
+	// Allowlisted keys (endpoint, token) ARE written.
+	assert.Equal(t, "new-token", configMap["token"],
+		"Allowlisted token field should be written")
 	assert.NotEqual(t, initialConfig["endpoint"], configMap["endpoint"],
-		"When endpoint is modified in viper, it IS written to the file")
-	assert.Contains(t, configMap, "extra_field",
-		"When extra fields are added to viper, they ARE written to the file")
+		"Allowlisted endpoint field should be written")
 
-	// This test demonstrates that the responsibility for maintaining config
-	// integrity lies with the caller, not with WriteConfigFileSilent
+	// Non-allowlisted keys (extra_field) are NOT written, even if set in viper.
+	assert.NotContains(t, configMap, "extra_field",
+		"Non-allowlisted fields must not leak into drconfig.yaml")
+}
+
+func TestWriteConfigFileSilent_TransientFlagsNotPersisted(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "auth-test-*")
+	require.NoError(t, err)
+
+	defer os.RemoveAll(tempDir)
+
+	testutil.SetTestHomeDir(t, tempDir)
+
+	viper.Reset()
+
+	defer viper.Reset()
+
+	err = config.CreateConfigFileDirIfNotExists()
+	require.NoError(t, err)
+
+	configDir := filepath.Join(tempDir, ".config", "datarobot")
+	configFile := filepath.Join(configDir, "drconfig.yaml")
+
+	initialConfig := map[string]interface{}{
+		"endpoint": "https://app.datarobot.com/api/v2",
+		"token":    "original-token-12345",
+	}
+
+	initialYaml, err := yaml.Marshal(initialConfig)
+	require.NoError(t, err)
+
+	err = os.WriteFile(configFile, initialYaml, 0o644)
+	require.NoError(t, err)
+
+	err = config.ReadConfigFile("")
+	require.NoError(t, err)
+
+	// Simulate transient command flags being bound to viper.
+	viper.Set("yes", true)
+	viper.Set("verbose", true)
+	viper.Set("force-interactive", true)
+	viper.Set("debug", true)
+
+	// Also legitimately update an allowlisted key.
+	viper.Set("token", "new-token-after-flags")
+
+	_ = WriteConfigFileSilent()
+
+	rawYaml, err := os.ReadFile(configFile)
+	require.NoError(t, err)
+
+	var configMap map[string]interface{}
+
+	err = yaml.Unmarshal(rawYaml, &configMap)
+	require.NoError(t, err)
+
+	assert.Equal(t, "new-token-after-flags", configMap["token"])
+	assert.NotContains(t, configMap, "yes")
+	assert.NotContains(t, configMap, "verbose")
+	assert.NotContains(t, configMap, "force-interactive")
+	assert.NotContains(t, configMap, "debug")
 }
