@@ -19,9 +19,9 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/datarobot/cli/internal/config/viperx"
 	"github.com/datarobot/cli/internal/log"
 	"github.com/datarobot/cli/internal/state"
-	"github.com/datarobot/cli/internal/config/viperx"
 )
 
 const (

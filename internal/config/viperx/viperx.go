@@ -52,14 +52,14 @@ type ConfigFileNotFoundError = viper.ConfigFileNotFoundError
 
 // Reads / state inspection.
 var (
-	Get             = viper.Get
-	GetString       = viper.GetString
-	GetBool         = viper.GetBool
-	GetInt          = viper.GetInt
-	GetDuration     = viper.GetDuration
-	IsSet           = viper.IsSet
-	AllSettings     = viper.AllSettings
-	ConfigFileUsed  = viper.ConfigFileUsed
+	Get            = viper.Get
+	GetString      = viper.GetString
+	GetBool        = viper.GetBool
+	GetInt         = viper.GetInt
+	GetDuration    = viper.GetDuration
+	IsSet          = viper.IsSet
+	AllSettings    = viper.AllSettings
+	ConfigFileUsed = viper.ConfigFileUsed
 )
 
 // Writes to live (in-memory) state. These do NOT persist to disk; use
@@ -87,4 +87,3 @@ var (
 	AddConfigPath = viper.AddConfigPath
 	ReadInConfig  = viper.ReadInConfig
 )
-

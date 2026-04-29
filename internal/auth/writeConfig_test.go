@@ -20,8 +20,8 @@ import (
 	"testing"
 
 	"github.com/datarobot/cli/internal/config"
-	"github.com/datarobot/cli/internal/testutil"
 	"github.com/datarobot/cli/internal/config/viperx"
+	"github.com/datarobot/cli/internal/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"

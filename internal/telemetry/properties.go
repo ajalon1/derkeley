@@ -25,10 +25,10 @@ import (
 	"time"
 
 	"github.com/datarobot/cli/internal/config"
+	"github.com/datarobot/cli/internal/config/viperx"
 	"github.com/datarobot/cli/internal/drapi"
 	"github.com/datarobot/cli/internal/repo"
 	"github.com/datarobot/cli/internal/version"
-	"github.com/datarobot/cli/internal/config/viperx"
 )
 
 // CommonProperties holds the set of properties attached to every telemetry

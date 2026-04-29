@@ -27,8 +27,8 @@ import (
 
 	"github.com/amplitude/analytics-go/amplitude"
 	"github.com/amplitude/analytics-go/amplitude/types"
-	"github.com/datarobot/cli/internal/log"
 	"github.com/datarobot/cli/internal/config/viperx"
+	"github.com/datarobot/cli/internal/log"
 )
 
 // AmplitudeAPIKey is set at build time via ldflags. Dev builds have an empty value,

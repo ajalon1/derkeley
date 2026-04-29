@@ -25,9 +25,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/datarobot/cli/internal/config/viperx"
 	"github.com/datarobot/cli/internal/log"
 	"github.com/datarobot/cli/internal/repo"
-	"github.com/datarobot/cli/internal/config/viperx"
 )
 
 // PluginRegistryTerminology is the user-facing term for the plugin registry

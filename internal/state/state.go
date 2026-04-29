@@ -19,8 +19,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/datarobot/cli/internal/version"
 	"github.com/datarobot/cli/internal/config/viperx"
+	"github.com/datarobot/cli/internal/version"
 	"gopkg.in/yaml.v3"
 )
 
