@@ -99,6 +99,48 @@ When upgrading the Go version in `go.mod`, you may need to update golangci-lint 
 
 The `GOLANGCI_LINT_VERSION` is pinned to ensure reproducible builds across all development environments. The binary is installed as a standalone pre-built artifact, not via `go install`, so version mismatches between your project's Go version and golangci-lint's internal Go version are handled automatically.
 
+## Configuration & Flag Binding
+
+The CLI persists user configuration to `drconfig.yaml` via viper. To prevent
+transient command flags from leaking into the config file, follow these rules.
+For full details, see [docs/development/configuration.md](docs/development/configuration.md).
+
+**Quick reference:**
+
+- **Never call `viper.WriteConfig()` directly.** Use `config.UpdateConfigFile(keys ...string)`,
+  which only writes keys listed in `config.PersistableKeys` (`internal/config/write.go`).
+- **Never call `viper.BindPFlags(cmd.Flags())`.** It bulk-binds every subcommand flag
+  (e.g. `--yes`, `--all`) into `viper.AllSettings()`. Bind only specific persistent
+  flags explicitly in `cmd/root.go::init()`.
+- **Read transient flags directly from cobra**: `cmd.Flags().GetBool("yes")`. Do
+  not bind them with `viper.BindPFlag`.
+- **Env-var override for a transient flag:** register only the env var via
+  `viper.BindEnv(key, "DATAROBOT_CLI_…")` and OR the two sources at the call site:
+  `yesFlag, _ := cmd.Flags().GetBool("yes"); yes := yesFlag || viper.GetBool("yes")`.
+- **To make a key persistable**, add it to `config.PersistableKeys` and have the
+  write site call `config.UpdateConfigFile("my-key")`.
+
+## Configuration & Flag Binding
+
+The CLI persists user configuration to `drconfig.yaml` via viper. To prevent
+transient command flags from leaking into the config file, follow these rules.
+For full details, see [docs/development/configuration.md](docs/development/configuration.md).
+
+**Quick reference:**
+
+- **Never call `viper.WriteConfig()` directly.** Use `config.UpdateConfigFile(keys ...string)`,
+  which only writes keys listed in `config.PersistableKeys` (`internal/config/write.go`).
+- **Never call `viper.BindPFlags(cmd.Flags())`.** It bulk-binds every subcommand flag
+  (e.g. `--yes`, `--all`) into `viper.AllSettings()`. Bind only specific persistent
+  flags explicitly in `cmd/root.go::init()`.
+- **Read transient flags directly from cobra**: `cmd.Flags().GetBool("yes")`. Do
+  not bind them with `viper.BindPFlag`.
+- **Env-var override for a transient flag:** register only the env var via
+  `viper.BindEnv(key, "DATAROBOT_CLI_…")` and OR the two sources at the call site:
+  `yesFlag, _ := cmd.Flags().GetBool("yes"); yes := yesFlag || viper.GetBool("yes")`.
+- **To make a key persistable**, add it to `config.PersistableKeys` and have the
+  write site call `config.UpdateConfigFile("my-key")`.
+
 ## Feature Gates
 
 Feature gates allow commands to be hidden until ready for release. For comprehensive documentation including implementation details, see [docs/development/feature-gates.md](docs/development/feature-gates.md).

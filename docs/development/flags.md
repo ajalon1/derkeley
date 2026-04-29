@@ -212,7 +212,36 @@ cmd.MarkFlagsMutuallyExclusive("from-file", "release-date")
    dr mycommand --flag1
    ```
 
+## Viper binding rules
+
+The CLI deliberately limits which flags are bound to viper. Subcommand
+flags (such as `--yes`, `--all`, `--if-needed`) **must not** be bound via
+`viper.BindPFlag`, and `cmd/root.go` does not call
+`viper.BindPFlags(cmd.Flags())` for the same reason: doing so would slurp
+those flag values into `viper.AllSettings()` and risk persisting them to
+`drconfig.yaml` on the next config write.
+
+Quick rules for new flags:
+
+- **Transient flags** (per-invocation): read directly via
+  `cmd.Flags().GetBool(...)`. Do not bind to viper.
+- **Env-var override needed?** Register only the env var with
+  `viper.BindEnv(key, "DATAROBOT_CLI_…")` and OR the two sources in your
+  handler:
+
+  ```go
+  yesFlag, _ := cmd.Flags().GetBool("yes")
+  yes := yesFlag || viper.GetBool("yes")
+  ```
+
+- **Sticky CLI preferences** (rare): bind to viper *and* add the key to
+  `config.PersistableKeys` in `internal/config/write.go`.
+
+For full details and test patterns, see the
+[Configuration guide](configuration.md).
+
 ## See also
 
 - [Cobra documentation](https://cobra.dev/)
 - [Building guide](building.md) — General development setup and standards
+- [Configuration guide](configuration.md) — viper, drconfig.yaml, and persisted keys
