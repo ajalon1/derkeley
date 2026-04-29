@@ -7,10 +7,10 @@ linters:
     - bodyclose
     - contextcheck
     - cyclop
+    - depguard
     - dupword
     - errname
     - exhaustive
-    - forbidigo
     - loggercheck
     - misspell
     - nestif
@@ -24,25 +24,24 @@ linters:
     - usestdlibvars
     - wsl_v5
   settings:
-    forbidigo:
-      analyze-types: true
-      forbid:
-        - pattern: ^viper\.WriteConfig$
-          msg: >-
-            Do not call viper.WriteConfig() directly. Use config.UpdateConfigFile(...)
-            so that only allowlisted keys (config.PersistableKeys) are written to
-            drconfig.yaml. Direct calls leak transient flags such as --yes into the
-            config file. See docs/development/configuration.md.
-        - pattern: ^viper\.SafeWriteConfig$
-          msg: >-
-            Do not call viper.SafeWriteConfig() directly. Use config.UpdateConfigFile(...)
-            instead. See docs/development/configuration.md.
-        - pattern: ^viper\.BindPFlags$
-          msg: >-
-            Do not bulk-bind subcommand flags via viper.BindPFlags. Bind specific
-            persistent flags individually with viper.BindPFlag in cmd/root.go::init(),
-            and read subcommand flag values directly via cmd.Flags().GetX(...).
-            See docs/development/configuration.md.
+    depguard:
+      rules:
+        no-raw-viper:
+          # Production and test code outside internal/config/** must not
+          # import viper directly. Use internal/config/viperx instead,
+          # which exposes only the safe subset of viper's API (no
+          # WriteConfig / SafeWriteConfig / BindPFlags). See
+          # docs/development/configuration.md for the full contract.
+          list-mode: lax
+          files:
+            - "!**/internal/config/**"
+          deny:
+            - pkg: github.com/spf13/viper
+              desc: >-
+                Import internal/config/viperx instead of github.com/spf13/viper.
+                The wrapper omits WriteConfig, SafeWriteConfig, and BindPFlags
+                by design so transient flag state cannot leak into
+                drconfig.yaml. See docs/development/configuration.md.
     revive:
       rules:
         # https://github.com/mgechev/revive/blob/HEAD/RULES_DESCRIPTIONS.md#error-strings
@@ -73,24 +72,6 @@ linters:
       - common-false-positives
       - legacy
       - std-error-handling
-    rules:
-      # The allowlisted writer is the single legitimate caller of
-      # viper.WriteConfig (used to flush the curated key set to disk).
-      - path: internal/config/write\.go
-        linters:
-          - forbidigo
-      # cmd/root.go is the one place that may bind persistent root flags
-      # via viper.BindPFlags. TODO Remove this exclusion if we completely
-      # disallow viper.BindPFlags.
-      - path: cmd/root\.go
-        linters:
-          - forbidigo
-      # Tests are allowed to call viper.WriteConfig / SafeWriteConfig as
-      # fixture setup to seed drconfig.yaml on disk before exercising the
-      # production write path.
-      - path: _test\.go
-        linters:
-          - forbidigo
     paths:
       - third_party$
       - builtin$
