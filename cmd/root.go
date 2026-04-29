@@ -241,14 +241,5 @@ func initializeConfig(_ *cobra.Command) error {
 		return fmt.Errorf("Failed to read config file: %w", err)
 	}
 
-	// NOTE: We deliberately do NOT bulk-bind subcommand flags into viper
-	// (no viperx.BindPFlags here, and viperx does not even expose it).
-	// Bulk-binding would slurp every subcommand flag (e.g. --yes, --all,
-	// --if-needed) into viper.AllSettings() and risk leaking transient
-	// flag state into drconfig.yaml on the next config write.
-	// Persistent root flags that need viper integration are bound
-	// individually with viperx.BindPFlag at the top of init(); subcommand
-	// flags should be read directly via cmd.Flags().GetX(...).
-
 	return nil
 }
