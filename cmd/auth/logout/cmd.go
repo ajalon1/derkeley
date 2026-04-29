@@ -21,11 +21,11 @@ import (
 	"github.com/datarobot/cli/internal/config"
 	"github.com/datarobot/cli/internal/log"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
+	"github.com/datarobot/cli/internal/config/viperx"
 )
 
 func Run(_ *cobra.Command, _ []string) {
-	viper.Set(config.DataRobotAPIKey, "")
+	viperx.Set(config.DataRobotAPIKey, "")
 
 	err := auth.WriteConfigFile()
 	if err != nil {

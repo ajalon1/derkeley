@@ -28,7 +28,7 @@ import (
 	"github.com/datarobot/cli/internal/config"
 	"github.com/datarobot/cli/internal/envbuilder"
 	"github.com/datarobot/cli/tui"
-	"github.com/spf13/viper"
+	"github.com/datarobot/cli/internal/config/viperx"
 )
 
 const (
@@ -240,7 +240,7 @@ func (m pulumiLoginModel) handlePassphraseAccepted() (tea.Model, tea.Cmd) {
 }
 
 func (m pulumiLoginModel) savePassphraseToConfig() error {
-	viper.Set(pulumiConfigPassphraseKey, m.generatedPassphrase)
+	viperx.Set(pulumiConfigPassphraseKey, m.generatedPassphrase)
 
 	if err := config.UpdateConfigFile(pulumiConfigPassphraseKey); err != nil {
 		return fmt.Errorf("failed to write config: %w", err)
@@ -383,7 +383,7 @@ func CheckPulumiSetup(dir string, variables []envbuilder.Variable) (needsSetup, 
 	}
 
 	loggedIn := isPulumiLoggedIn()
-	passphraseSet := viper.GetString(pulumiConfigPassphraseKey) != ""
+	passphraseSet := viperx.GetString(pulumiConfigPassphraseKey) != ""
 
 	return needsPulumiSetup(prompts, loggedIn, passphraseSet), loggedIn, !passphraseSet
 }

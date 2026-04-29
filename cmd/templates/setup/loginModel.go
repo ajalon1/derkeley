@@ -30,7 +30,7 @@ import (
 	"github.com/datarobot/cli/internal/log"
 	"github.com/datarobot/cli/internal/misc/open"
 	"github.com/datarobot/cli/tui"
-	"github.com/spf13/viper"
+	"github.com/datarobot/cli/internal/config/viperx"
 )
 
 type LoginModel struct {
@@ -148,7 +148,7 @@ func (lm LoginModel) waitForAPIKey() tea.Cmd {
 			return errMsg{errors.New("Interrupt request received.")}
 		}
 
-		viper.Set(config.DataRobotAPIKey, apiKey)
+		viperx.Set(config.DataRobotAPIKey, apiKey)
 
 		err := auth.WriteConfigFileSilent()
 		if err != nil {

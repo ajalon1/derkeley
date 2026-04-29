@@ -30,7 +30,7 @@ import (
 	"github.com/datarobot/cli/internal/misc/reader"
 	"github.com/datarobot/cli/tui"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
+	"github.com/datarobot/cli/internal/config/viperx"
 )
 
 // APIKeyCallbackFunc is a variable that holds the function for retrieving API keys.
@@ -96,7 +96,7 @@ func EnsureAuthenticatedE(cmd *cobra.Command, _ []string) error {
 // triggers the login flow automatically. Returns true if authentication
 // is valid or was successfully obtained.
 func EnsureAuthenticated(ctx context.Context) bool { //nolint: cyclop
-	if viper.GetBool("skip_auth") {
+	if viperx.GetBool("skip_auth") {
 		log.Warn("Authentication checks are disabled via the '--skip-auth' flag. This may cause API calls to fail.")
 
 		return true
@@ -109,8 +109,8 @@ func EnsureAuthenticated(ctx context.Context) bool { //nolint: cyclop
 		// such as those used by the DataRobot platform or other SDKs
 		// and clients. If the DATAROBOT_CLI equivalents are not set,
 		// then Viper will fallback to these
-		_ = viper.BindEnv("endpoint", "DATAROBOT_ENDPOINT", "DATAROBOT_API_ENDPOINT")
-		_ = viper.BindEnv("token", "DATAROBOT_API_TOKEN")
+		_ = viperx.BindEnv("endpoint", "DATAROBOT_ENDPOINT", "DATAROBOT_API_ENDPOINT")
+		_ = viperx.BindEnv("token", "DATAROBOT_API_TOKEN")
 
 		return true
 	}
@@ -163,7 +163,7 @@ func EnsureAuthenticated(ctx context.Context) bool { //nolint: cyclop
 	log.Warn("No valid API key found. Starting authentication flow...")
 
 	// Auto-retrieve new credentials without prompting
-	viper.Set(config.DataRobotAPIKey, "")
+	viperx.Set(config.DataRobotAPIKey, "")
 
 	key, err := APIKeyCallbackFunc(ctx, datarobotHost)
 	if err != nil {
@@ -171,7 +171,7 @@ func EnsureAuthenticated(ctx context.Context) bool { //nolint: cyclop
 		return false
 	}
 
-	viper.Set(config.DataRobotAPIKey, strings.ReplaceAll(key, "\n", ""))
+	viperx.Set(config.DataRobotAPIKey, strings.ReplaceAll(key, "\n", ""))
 
 	err = WriteConfigFileSilent()
 	if err != nil {

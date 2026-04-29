@@ -28,7 +28,7 @@ import (
 	"github.com/datarobot/cli/internal/state"
 	"github.com/datarobot/cli/tui"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
+	"github.com/datarobot/cli/internal/config/viperx"
 )
 
 func Cmd() *cobra.Command {
@@ -146,7 +146,13 @@ This wizard will help you:
 		variables, contents := envbuilder.VariablesFromLines(dotenvFileLines)
 
 		showAllPrompts, _ := cmd.Flags().GetBool("all")
-		yes := viper.GetBool("yes")
+		// Read --yes directly from flags rather than through viper to
+		// avoid the flag value leaking into viper.AllSettings() (and from
+		// there into drconfig.yaml on subsequent writes). The
+		// DATAROBOT_CLI_NON_INTERACTIVE environment variable still flows
+		// through viper via BindEnv below.
+		yesFlag, _ := cmd.Flags().GetBool("yes")
+		yes := yesFlag || viperx.GetBool("yes")
 
 		needsPulumi, pulumiLoggedIn, needsPassphrase := CheckPulumiSetup(repositoryRoot, variables)
 
@@ -195,9 +201,11 @@ func init() {
 	SetupCmd.Flags().BoolP("yes", "y", false, "Skip interactive prompts and use defaults (useful for automation).")
 	SetupCmd.MarkFlagsMutuallyExclusive("yes", "all")
 
-	// Bind flag to viper to enable env var support (DATAROBOT_CLI_NON_INTERACTIVE)
-	_ = viper.BindPFlag("yes", SetupCmd.Flags().Lookup("yes"))
-	_ = viper.BindEnv("yes", "DATAROBOT_CLI_NON_INTERACTIVE")
+	// Bind only the env var (DATAROBOT_CLI_NON_INTERACTIVE) to viper.
+	// The --yes flag itself is read directly from cmd.Flags() in RunE so
+	// that an explicit --yes does not leak into viper.AllSettings() and
+	// get persisted to drconfig.yaml on subsequent config writes.
+	_ = viperx.BindEnv("yes", "DATAROBOT_CLI_NON_INTERACTIVE")
 }
 
 // shouldSkipSetup checks if setup should be skipped when --if-needed flag is set.

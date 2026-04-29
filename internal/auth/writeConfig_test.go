@@ -21,7 +21,7 @@ import (
 
 	"github.com/datarobot/cli/internal/config"
 	"github.com/datarobot/cli/internal/testutil"
-	"github.com/spf13/viper"
+	"github.com/datarobot/cli/internal/config/viperx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
@@ -35,9 +35,9 @@ func TestWriteConfigFileSilent_OnlyTokenChanged(t *testing.T) {
 
 	testutil.SetTestHomeDir(t, tempDir)
 
-	viper.Reset()
+	viperx.Reset()
 
-	defer viper.Reset()
+	defer viperx.Reset()
 
 	// Create config directory and file
 	err = config.CreateConfigFileDirIfNotExists()
@@ -64,28 +64,28 @@ func TestWriteConfigFileSilent_OnlyTokenChanged(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify initial values are loaded
-	assert.Equal(t, "https://app.datarobot.com/api/v2", viper.GetString("endpoint"))
-	assert.Equal(t, "original-token-12345", viper.GetString("token"))
-	assert.True(t, viper.GetBool("ssl_verify"))
+	assert.Equal(t, "https://app.datarobot.com/api/v2", viperx.GetString("endpoint"))
+	assert.Equal(t, "original-token-12345", viperx.GetString("token"))
+	assert.True(t, viperx.GetBool("ssl_verify"))
 
 	// Change only the token
-	viper.Set("token", "new-token-67890")
+	viperx.Set("token", "new-token-67890")
 
 	// Call WriteConfigFileSilent
 	_ = WriteConfigFileSilent()
 
 	// Reset viper and re-read the file to verify what was actually written
-	viper.Reset()
+	viperx.Reset()
 
 	err = config.ReadConfigFile("")
 	require.NoError(t, err)
 
 	// Verify token was changed
-	assert.Equal(t, "new-token-67890", viper.GetString("token"), "Token should be updated")
+	assert.Equal(t, "new-token-67890", viperx.GetString("token"), "Token should be updated")
 
 	// Verify endpoint and ssl_verify remain unchanged
-	assert.Equal(t, "https://app.datarobot.com/api/v2", viper.GetString("endpoint"), "Endpoint should remain unchanged")
-	assert.True(t, viper.GetBool("ssl_verify"), "ssl_verify should remain unchanged")
+	assert.Equal(t, "https://app.datarobot.com/api/v2", viperx.GetString("endpoint"), "Endpoint should remain unchanged")
+	assert.True(t, viperx.GetBool("ssl_verify"), "ssl_verify should remain unchanged")
 
 	// Read the raw YAML to ensure no extra fields were added
 	rawYaml, err := os.ReadFile(configFile)
@@ -119,9 +119,9 @@ func TestWriteConfigFileSilent_PreservesExtraFields(t *testing.T) {
 
 	testutil.SetTestHomeDir(t, tempDir)
 
-	viper.Reset()
+	viperx.Reset()
 
-	defer viper.Reset()
+	defer viperx.Reset()
 
 	err = config.CreateConfigFileDirIfNotExists()
 	require.NoError(t, err)
@@ -148,22 +148,22 @@ func TestWriteConfigFileSilent_PreservesExtraFields(t *testing.T) {
 	require.NoError(t, err)
 
 	// Change only the token
-	viper.Set("token", "updated-token-99999")
+	viperx.Set("token", "updated-token-99999")
 
 	_ = WriteConfigFileSilent()
 
 	// Reset and re-read
-	viper.Reset()
+	viperx.Reset()
 
 	err = config.ReadConfigFile("")
 	require.NoError(t, err)
 
 	// Verify all original fields are preserved
-	assert.Equal(t, "updated-token-99999", viper.GetString("token"))
-	assert.Equal(t, "https://app.datarobot.com/api/v2", viper.GetString("endpoint"))
-	assert.False(t, viper.GetBool("ssl_verify"))
-	assert.Equal(t, "custom_value", viper.GetString("custom_field"))
-	assert.Equal(t, 42, viper.GetInt("another_field"))
+	assert.Equal(t, "updated-token-99999", viperx.GetString("token"))
+	assert.Equal(t, "https://app.datarobot.com/api/v2", viperx.GetString("endpoint"))
+	assert.False(t, viperx.GetBool("ssl_verify"))
+	assert.Equal(t, "custom_value", viperx.GetString("custom_field"))
+	assert.Equal(t, 42, viperx.GetInt("another_field"))
 }
 
 func TestWriteConfigFileSilent_OnlyAllowlistedFieldsWritten(t *testing.T) {
@@ -174,9 +174,9 @@ func TestWriteConfigFileSilent_OnlyAllowlistedFieldsWritten(t *testing.T) {
 
 	testutil.SetTestHomeDir(t, tempDir)
 
-	viper.Reset()
+	viperx.Reset()
 
-	defer viper.Reset()
+	defer viperx.Reset()
 
 	err = config.CreateConfigFileDirIfNotExists()
 	require.NoError(t, err)
@@ -200,13 +200,13 @@ func TestWriteConfigFileSilent_OnlyAllowlistedFieldsWritten(t *testing.T) {
 	require.NoError(t, err)
 
 	// Intentionally modify multiple fields (this demonstrates incorrect usage)
-	viper.Set("token", "new-token")
-	viper.Set("endpoint", "https://different.datarobot.com/api/v2")
-	viper.Set("extra_field", "should_not_exist")
+	viperx.Set("token", "new-token")
+	viperx.Set("endpoint", "https://different.datarobot.com/api/v2")
+	viperx.Set("extra_field", "should_not_exist")
 
 	_ = WriteConfigFileSilent()
 
-	viper.Reset()
+	viperx.Reset()
 
 	err = config.ReadConfigFile("")
 	require.NoError(t, err)
@@ -226,7 +226,7 @@ func TestWriteConfigFileSilent_OnlyAllowlistedFieldsWritten(t *testing.T) {
 	assert.NotEqual(t, initialConfig["endpoint"], configMap["endpoint"],
 		"Allowlisted endpoint field should be written")
 
-	// Non-allowlisted keys (extra_field) are NOT written, even if set in viper.
+	// Non-allowlisted keys (extra_field) are NOT written, even if set in viperx.
 	assert.NotContains(t, configMap, "extra_field",
 		"Non-allowlisted fields must not leak into drconfig.yaml")
 }
@@ -239,9 +239,9 @@ func TestWriteConfigFileSilent_TransientFlagsNotPersisted(t *testing.T) {
 
 	testutil.SetTestHomeDir(t, tempDir)
 
-	viper.Reset()
+	viperx.Reset()
 
-	defer viper.Reset()
+	defer viperx.Reset()
 
 	err = config.CreateConfigFileDirIfNotExists()
 	require.NoError(t, err)
@@ -263,14 +263,14 @@ func TestWriteConfigFileSilent_TransientFlagsNotPersisted(t *testing.T) {
 	err = config.ReadConfigFile("")
 	require.NoError(t, err)
 
-	// Simulate transient command flags being bound to viper.
-	viper.Set("yes", true)
-	viper.Set("verbose", true)
-	viper.Set("force-interactive", true)
-	viper.Set("debug", true)
+	// Simulate transient command flags being bound to viperx.
+	viperx.Set("yes", true)
+	viperx.Set("verbose", true)
+	viperx.Set("force-interactive", true)
+	viperx.Set("debug", true)
 
 	// Also legitimately update an allowlisted key.
-	viper.Set("token", "new-token-after-flags")
+	viperx.Set("token", "new-token-after-flags")
 
 	_ = WriteConfigFileSilent()
 

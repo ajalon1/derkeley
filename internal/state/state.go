@@ -20,7 +20,7 @@ import (
 	"time"
 
 	"github.com/datarobot/cli/internal/version"
-	"github.com/spf13/viper"
+	"github.com/datarobot/cli/internal/config/viperx"
 	"gopkg.in/yaml.v3"
 )
 
@@ -148,7 +148,7 @@ func UpdateAfterTemplatesSetup(repoRoot string) error {
 // If force-interactive flag is set, this always returns false to force re-execution.
 func HasCompletedDotenvSetup(repoRoot string) bool {
 	// Check if we should force the wizard to run
-	if viper.GetBool("force-interactive") {
+	if viperx.GetBool("force-interactive") {
 		return false
 	}
 
