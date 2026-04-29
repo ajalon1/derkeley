@@ -80,9 +80,8 @@ linters:
         linters:
           - forbidigo
       # cmd/root.go is the one place that may bind persistent root flags
-      # via viper.BindPFlags during the Option E migration window. Once
-      # Option E lands and only viper.BindPFlag is used, this exclusion
-      # can be removed.
+      # via viper.BindPFlags. TODO Remove this exclusion if we completely
+      # disallow viper.BindPFlags.
       - path: cmd/root\.go
         linters:
           - forbidigo
