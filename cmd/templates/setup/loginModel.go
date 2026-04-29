@@ -27,10 +27,10 @@ import (
 	"github.com/datarobot/cli/internal/assets"
 	"github.com/datarobot/cli/internal/auth"
 	"github.com/datarobot/cli/internal/config"
+	"github.com/datarobot/cli/internal/config/viperx"
 	"github.com/datarobot/cli/internal/log"
 	"github.com/datarobot/cli/internal/misc/open"
 	"github.com/datarobot/cli/tui"
-	"github.com/datarobot/cli/internal/config/viperx"
 )
 
 type LoginModel struct {

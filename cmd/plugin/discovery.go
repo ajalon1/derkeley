@@ -22,12 +22,12 @@ import (
 	"time"
 
 	"github.com/datarobot/cli/cmd/plugin/shared"
+	"github.com/datarobot/cli/internal/config/viperx"
 	"github.com/datarobot/cli/internal/log"
 	"github.com/datarobot/cli/internal/misc/reader"
 	internalPlugin "github.com/datarobot/cli/internal/plugin"
 	"github.com/datarobot/cli/tui"
 	"github.com/spf13/cobra"
-	"github.com/datarobot/cli/internal/config/viperx"
 )
 
 // RegisterPluginCommands discovers installed plugins and registers them as sub-commands

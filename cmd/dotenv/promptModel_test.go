@@ -22,9 +22,9 @@ import (
 	"testing"
 
 	"github.com/datarobot/cli/internal/config"
+	"github.com/datarobot/cli/internal/config/viperx"
 	"github.com/datarobot/cli/internal/drapi"
 	"github.com/datarobot/cli/internal/envbuilder"
-	"github.com/datarobot/cli/internal/config/viperx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

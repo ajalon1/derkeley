@@ -18,10 +18,10 @@ import (
 	"fmt"
 
 	"github.com/datarobot/cli/cmd/plugin/shared"
+	"github.com/datarobot/cli/internal/config/viperx"
 	"github.com/datarobot/cli/internal/plugin"
 	"github.com/datarobot/cli/tui"
 	"github.com/spf13/cobra"
-	"github.com/datarobot/cli/internal/config/viperx"
 )
 
 var (

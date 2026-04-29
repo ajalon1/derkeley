@@ -24,8 +24,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/exp/teatest"
-	"github.com/datarobot/cli/internal/envbuilder"
 	"github.com/datarobot/cli/internal/config/viperx"
+	"github.com/datarobot/cli/internal/envbuilder"
 	"github.com/stretchr/testify/suite"
 )
 

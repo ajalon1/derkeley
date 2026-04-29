@@ -19,9 +19,9 @@ import (
 
 	"github.com/datarobot/cli/internal/auth"
 	"github.com/datarobot/cli/internal/config"
+	"github.com/datarobot/cli/internal/config/viperx"
 	"github.com/datarobot/cli/internal/log"
 	"github.com/spf13/cobra"
-	"github.com/datarobot/cli/internal/config/viperx"
 )
 
 func Run(_ *cobra.Command, _ []string) {
