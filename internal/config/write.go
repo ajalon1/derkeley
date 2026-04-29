@@ -42,8 +42,8 @@ var PersistableKeys = map[string]struct{}{
 }
 
 // UpdateConfigFile writes only the allowlisted keys from viper back to the
-// drconfig.yaml file on disk, preserving any other fields that already exist
-// in the file but are not currently tracked by viper.
+// drconfig.yaml file on disk, preserving any other fields and comments that
+// already exist in the file but are not currently tracked by viper.
 //
 // This replaces direct calls to viper.WriteConfig(), which would otherwise
 // serialize the entire viper.AllSettings() map -- including transient command
@@ -62,14 +62,19 @@ func UpdateConfigFile(keys ...string) error {
 		return err
 	}
 
-	existing, err := readYAMLFile(configFile)
+	rootNode, err := readYAMLNode(configFile)
 	if err != nil {
 		return err
 	}
 
-	applyAllowedKeys(existing, keys)
+	applyAllowedKeysToNode(rootNode, keys)
 
-	out, err := yaml.Marshal(existing)
+	docNode := &yaml.Node{
+		Kind:    yaml.DocumentNode,
+		Content: []*yaml.Node{rootNode},
+	}
+
+	out, err := yaml.Marshal(docNode)
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
@@ -96,10 +101,43 @@ func resolveConfigFilePath() (string, error) {
 	return filepath.Join(dir, configFileName), nil
 }
 
-// applyAllowedKeys overlays values from viper onto target for each key in
-// the allowlist. If keys is empty, all keys in PersistableKeys are
-// considered. Keys not in PersistableKeys are silently ignored.
-func applyAllowedKeys(target map[string]interface{}, keys []string) {
+// readYAMLNode reads a YAML file into a *yaml.Node, preserving comments and
+// structure. If the file does not exist or is empty, an empty map node is returned.
+// Returns the root mapping node (unwrapping the document node if necessary).
+func readYAMLNode(path string) (*yaml.Node, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}, nil
+		}
+
+		return nil, fmt.Errorf("failed to read config file: %w", err)
+	}
+
+	if len(data) == 0 {
+		return &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}, nil
+	}
+
+	doc := &yaml.Node{}
+	if err := yaml.Unmarshal(data, doc); err != nil {
+		return nil, fmt.Errorf("failed to parse config file: %w", err)
+	}
+
+	if doc.Kind == yaml.DocumentNode && len(doc.Content) > 0 {
+		return doc.Content[0], nil
+	}
+
+	if doc.Kind == 0 {
+		return &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}, nil
+	}
+
+	return doc, nil
+}
+
+// applyAllowedKeysToNode updates keys in a yaml.Node, preserving comments
+// and non-allowlisted keys. It navigates to nested keys using dotted notation
+// (e.g. "foo.bar.baz").
+func applyAllowedKeysToNode(node *yaml.Node, keys []string) {
 	candidates := keys
 	if len(candidates) == 0 {
 		candidates = make([]string, 0, len(PersistableKeys))
@@ -118,57 +156,122 @@ func applyAllowedKeys(target map[string]interface{}, keys []string) {
 			continue
 		}
 
-		setNestedKey(target, key, viper.Get(key))
+		setNestedKeyInNode(node, key, viper.Get(key))
 	}
 }
 
-// readYAMLFile reads a YAML file into a generic map. If the file does not
-// exist or is empty, an empty map is returned.
-func readYAMLFile(path string) (map[string]interface{}, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return map[string]interface{}{}, nil
-		}
+// Note: Keys NOT in candidates are preserved as-is from the existing node.
+// This is intentional to preserve custom fields written by users or other tools.
 
-		return nil, fmt.Errorf("failed to read config file: %w", err)
-	}
-
-	if len(data) == 0 {
-		return map[string]interface{}{}, nil
-	}
-
-	out := map[string]interface{}{}
-	if err := yaml.Unmarshal(data, &out); err != nil {
-		return nil, fmt.Errorf("failed to parse config file: %w", err)
-	}
-
-	if out == nil {
-		out = map[string]interface{}{}
-	}
-
-	return out, nil
-}
-
-// setNestedKey sets a value at a dotted-path key in a nested map, creating
-// intermediate maps as needed. Keys without dots are set at the top level.
-func setNestedKey(m map[string]interface{}, key string, value interface{}) {
+// setNestedKeyInNode sets a value at a dotted-path key in a yaml.Node,
+// creating intermediate nodes as needed. Comments on existing keys are preserved.
+func setNestedKeyInNode(node *yaml.Node, key string, value interface{}) {
 	parts := strings.Split(key, ".")
 
-	cur := m
+	for i, part := range parts {
+		if node.Kind != yaml.MappingNode {
+			node.Kind = yaml.MappingNode
+			node.Tag = "!!map"
+			node.Content = []*yaml.Node{}
+		}
 
-	for i, p := range parts {
+		keyNode, valNode := findOrCreateKeyInNode(node, part)
+
 		if i == len(parts)-1 {
-			cur[p] = value
+			encodeValueToNode(valNode, value)
 			return
 		}
 
-		next, ok := cur[p].(map[string]interface{})
-		if !ok {
-			next = map[string]interface{}{}
-			cur[p] = next
+		if valNode.Kind != yaml.MappingNode {
+			valNode.Kind = yaml.MappingNode
+			valNode.Tag = "!!map"
+			valNode.Content = []*yaml.Node{}
 		}
 
-		cur = next
+		node = valNode
+		_ = keyNode
+	}
+}
+
+// findOrCreateKeyInNode finds or creates a key in a mapping node, returning
+// both the key and value nodes. If the key exists, its existing value node
+// is returned (preserving any comments on that node). If the key doesn't exist,
+// a new entry is created.
+func findOrCreateKeyInNode(node *yaml.Node, key string) (*yaml.Node, *yaml.Node) {
+	if node.Content == nil {
+		node.Content = []*yaml.Node{}
+	}
+
+	for i := 0; i < len(node.Content); i += 2 {
+		if i+1 >= len(node.Content) {
+			break
+		}
+
+		keyNode := node.Content[i]
+		if keyNode.Value == key {
+			return keyNode, node.Content[i+1]
+		}
+	}
+
+	keyNode := &yaml.Node{Kind: yaml.ScalarNode, Value: key}
+	valNode := &yaml.Node{Kind: yaml.ScalarNode}
+
+	node.Content = append(node.Content, keyNode, valNode)
+
+	return keyNode, valNode
+}
+
+// encodeValueToNode encodes a Go value into a yaml.Node, handling common types.
+func encodeValueToNode(node *yaml.Node, value interface{}) {
+	switch v := value.(type) {
+	case string:
+		node.Kind = yaml.ScalarNode
+		node.Tag = "!!str"
+		node.Value = v
+
+	case int, int32, int64:
+		node.Kind = yaml.ScalarNode
+		node.Tag = "!!int"
+		node.Value = fmt.Sprintf("%v", v)
+
+	case float32, float64:
+		node.Kind = yaml.ScalarNode
+		node.Tag = "!!float"
+		node.Value = fmt.Sprintf("%v", v)
+
+	case bool:
+		node.Kind = yaml.ScalarNode
+		node.Tag = "!!bool"
+
+		if v {
+			node.Value = "true"
+		} else {
+			node.Value = "false"
+		}
+
+	case nil:
+		node.Kind = yaml.ScalarNode
+		node.Tag = "!!null"
+		node.Value = ""
+
+	default:
+		encoded, err := yaml.Marshal(v)
+		if err != nil {
+			node.Kind = yaml.ScalarNode
+			node.Value = fmt.Sprintf("%v", v)
+
+			return
+		}
+
+		tempNode := &yaml.Node{}
+
+		if err := yaml.Unmarshal(encoded, tempNode); err != nil {
+			node.Kind = yaml.ScalarNode
+			node.Value = fmt.Sprintf("%v", v)
+
+			return
+		}
+
+		*node = *tempNode
 	}
 }
