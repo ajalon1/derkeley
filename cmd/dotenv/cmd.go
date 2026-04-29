@@ -130,6 +130,28 @@ This wizard will help you:
 			}
 		}
 
+		showAllPrompts, _ := cmd.Flags().GetBool("all")
+		// Read --yes directly from flags rather than through viper to
+		// avoid the flag value leaking into viper.AllSettings() (and from
+		// there into drconfig.yaml on subsequent writes). The
+		// DATAROBOT_CLI_NON_INTERACTIVE environment variable still flows
+		// through viper via BindEnv below.
+		yesFlag, _ := cmd.Flags().GetBool("yes")
+		yes := yesFlag || viperx.GetBool("yes")
+
+		// When --yes is set, run fully non-interactive setup without TUI
+		if yes {
+			if err := setupNonInteractive(repositoryRoot, dotenvFile); err != nil {
+				return err
+			}
+
+			// Update state after successful completion
+			_ = state.UpdateAfterDotenvSetup(repositoryRoot)
+
+			return nil
+		}
+
+		// Interactive mode: load variables and launch TUI
 		// TODO: There's an inconsistency between validation and wizard variable loading:
 		// - shouldSkipSetup uses ParseVariablesOnly (reads only .env file)
 		// - ValidateEnvironment also checks OS environment variables (os.LookupEnv)
@@ -144,15 +166,6 @@ This wizard will help you:
 		// or documenting the behavior more clearly in the flag description.
 		dotenvFileLines, _ := readDotenvFile(dotenvFile)
 		variables, contents := envbuilder.VariablesFromLines(dotenvFileLines)
-
-		showAllPrompts, _ := cmd.Flags().GetBool("all")
-		// Read --yes directly from flags rather than through viper to
-		// avoid the flag value leaking into viper.AllSettings() (and from
-		// there into drconfig.yaml on subsequent writes). The
-		// DATAROBOT_CLI_NON_INTERACTIVE environment variable still flows
-		// through viper via BindEnv below.
-		yesFlag, _ := cmd.Flags().GetBool("yes")
-		yes := yesFlag || viperx.GetBool("yes")
 
 		needsPulumi, pulumiLoggedIn, needsPassphrase := CheckPulumiSetup(repositoryRoot, variables)
 
