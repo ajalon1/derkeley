@@ -287,7 +287,7 @@ func filePrompts(yamlFile string) ([]UserPrompt, error) {
 		return nil, nil
 	}
 
-	log.Debugf("Parsing prompts from yaml file %s", yamlFile)
+	log.Infof("Parsing prompts from yaml file %s", yamlFile)
 
 	var fileParsed ParsedYaml
 
