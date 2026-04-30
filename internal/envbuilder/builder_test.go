@@ -288,6 +288,32 @@ func (suite *PromptFileSchemaTestSuite) TestLooksLikePromptFileAgentYAMLStructur
 	suite.True(result, "Agent YAML structure should be recognized as valid prompt file")
 }
 
+func (suite *BuilderTestSuite) TestMultipleYAMLFilesInSameFolder() {
+	// Test that the builder correctly handles multiple valid YAML files in the same folder
+	// while skipping non-prompt config files
+	prompts, err := GatherUserPrompts(suite.tempDir, nil)
+	suite.Require().NoError(err)
+
+	// Should have gathered prompts from both parakeet.yaml and another_parakeet.yaml
+	// plus the 2 core prompts (DATAROBOT_ENDPOINT and DATAROBOT_API_TOKEN)
+	suite.Greater(len(prompts), 2, "Should gather prompts from multiple YAML files")
+
+	// Verify that specific prompts from both files are present
+	envVars := make(map[string]bool)
+	for _, p := range prompts {
+		envVars[p.Env] = true
+	}
+
+	// From testYamlFile1
+	suite.True(envVars["PULUMI_CONFIG_PASSPHRASE"], "Should find PULUMI_CONFIG_PASSPHRASE from first file")
+	suite.True(envVars["DATAROBOT_DEFAULT_USE_CASE"], "Should find DATAROBOT_DEFAULT_USE_CASE from first file")
+
+	// From testYamlFile2
+	suite.True(envVars["INFRA_ENABLE_LLM"], "Should find INFRA_ENABLE_LLM from second file")
+	suite.True(envVars["TEXTGEN_DEPLOYMENT_ID"], "Should find TEXTGEN_DEPLOYMENT_ID from second file")
+	suite.True(envVars["TEXTGEN_REGISTERED_MODEL_ID"], "Should find TEXTGEN_REGISTERED_MODEL_ID from second file")
+}
+
 type BuilderTestSuite struct {
 	suite.Suite
 	tempDir string
