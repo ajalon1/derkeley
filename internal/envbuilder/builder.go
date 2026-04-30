@@ -55,7 +55,6 @@ type UserPrompt struct {
 	Value string
 	// Hidden indicates if this prompt should never be shown to users (e.g., core variables).
 	Hidden bool
-
 	// Env is the environment variable name to set (e.g., "DATABASE_URL").
 	Env string `yaml:"env"`
 	// Key is an alternative identifier when Env is not set (written as comment).
