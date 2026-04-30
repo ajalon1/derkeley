@@ -122,6 +122,11 @@ func ReadConfigFile(filePath string) error {
 	return nil
 }
 
+var sensitiveDebugKeys = map[string]struct{}{
+	"token":                    {},
+	"pulumi_config_passphrase": {},
+}
+
 func DebugViperConfig() (string, error) {
 	var sb strings.Builder
 
@@ -148,8 +153,8 @@ func DebugViperConfig() (string, error) {
 	for _, key := range keys {
 		value := viper.Get(key)
 
-		// Skip token because its sensitive
-		if key == "token" {
+		// Redact sensitive keys
+		if _, sensitive := sensitiveDebugKeys[key]; sensitive {
 			fmt.Fprintf(&sb, "  %s: %s\n", key, "****")
 		} else {
 			fmt.Fprintf(&sb, "  %s: %v\n", key, value)
