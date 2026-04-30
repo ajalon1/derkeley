@@ -17,6 +17,7 @@ package envbuilder
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"maps"
 	"os"
@@ -357,14 +358,95 @@ func rootSections(fileParsed ParsedYaml) []string {
 	return slices.Sorted(maps.Keys(keys))
 }
 
-// looksLikePromptFile inspects the root YAML shape to determine whether a file
-// is a prompt-definition file (a mapping of section name -> sequence of prompt
-// entries). Files whose root is a scalar or a sequence, or whose mapping values
-// are not sequences of mappings, are treated as non-prompt config files and
-// skipped silently. This avoids noisy unmarshal errors on copier answer files,
-// version manifests, and other YAML that happens to live under .datarobot/.
-// TODO We need to actually set up a schema and validate against it, instead of
-// just heuristically checking the shape.
+// PromptFileSchema validates that a YAML file conforms to the prompt definition schema:
+// - Root must be a mapping (sections)
+// - Each section value must be a sequence of mappings (prompts)
+// - Each prompt must have at least one of: env or key
+// - Each prompt must have a help field
+type PromptFileSchema struct{}
+
+// Validate checks if the provided YAML node conforms to the prompt file schema.
+// Returns nil if valid, or an error describing validation failures.
+func (s *PromptFileSchema) Validate(doc *yaml.Node) error {
+	if doc == nil {
+		return errors.New("document is empty")
+	}
+
+	if doc.Kind != yaml.MappingNode {
+		return fmt.Errorf("root must be a mapping (sections), got %v", doc.Kind)
+	}
+
+	if len(doc.Content) == 0 {
+		return errors.New("root mapping is empty")
+	}
+
+	// mapping content alternates key, value, key, value...
+	// validate that every value is a sequence of mappings (prompts)
+	for i := 1; i < len(doc.Content); i += 2 {
+		sectionValue := doc.Content[i]
+		if sectionValue.Kind != yaml.SequenceNode {
+			return fmt.Errorf("section value must be a sequence (prompts), got %v", sectionValue.Kind)
+		}
+
+		// validate each prompt in the section
+		for idx, promptNode := range sectionValue.Content {
+			if promptNode.Kind != yaml.MappingNode {
+				return fmt.Errorf("prompt at index %d must be a mapping, got %v", idx, promptNode.Kind)
+			}
+
+			if err := s.validatePromptNode(promptNode); err != nil {
+				return fmt.Errorf("invalid prompt at index %d: %w", idx, err)
+			}
+		}
+	}
+
+	return nil
+}
+
+// validatePromptNode validates a single prompt mapping node against the schema.
+// A valid prompt must have at least one of: env or key, and should have help.
+func (s *PromptFileSchema) validatePromptNode(promptNode *yaml.Node) error {
+	if len(promptNode.Content) == 0 {
+		return errors.New("prompt mapping is empty")
+	}
+
+	hasEnv := false
+	hasKey := false
+	hasHelp := false
+
+	// mapping content alternates key, value, key, value...
+	for i := 0; i < len(promptNode.Content); i += 2 {
+		keyNode := promptNode.Content[i]
+		fieldName := keyNode.Value
+
+		switch fieldName {
+		case "env":
+			hasEnv = true
+		case "key":
+			hasKey = true
+		case "help":
+			hasHelp = true
+		}
+	}
+
+	// prompt must have either env or key
+	if !hasEnv && !hasKey {
+		return errors.New("prompt must have either 'env' or 'key' field")
+	}
+
+	// prompt should have help (warn level, not error)
+	if !hasHelp {
+		return errors.New("prompt missing recommended 'help' field")
+	}
+
+	return nil
+}
+
+// looksLikePromptFile inspects the YAML to determine whether a file is a
+// prompt-definition file. Uses schema validation instead of heuristics.
+// Files that don't conform to the prompt schema are skipped silently.
+// This avoids errors on copier answer files, version manifests, and other
+// YAML that happens to live under .datarobot/.
 func looksLikePromptFile(data []byte) bool {
 	var root yaml.Node
 
@@ -377,24 +459,10 @@ func looksLikePromptFile(data []byte) bool {
 		return false
 	}
 
-	doc := root.Content[0]
-	if doc.Kind != yaml.MappingNode || len(doc.Content) == 0 {
+	schema := &PromptFileSchema{}
+	if err := schema.Validate(root.Content[0]); err != nil {
+		log.Debugf("YAML file does not match prompt schema: %v", err)
 		return false
-	}
-
-	// mapping content alternates key, value, key, value...
-	// every value must be a sequence of mappings to qualify as a prompt file.
-	for i := 1; i < len(doc.Content); i += 2 {
-		v := doc.Content[i]
-		if v.Kind != yaml.SequenceNode {
-			return false
-		}
-
-		for _, item := range v.Content {
-			if item.Kind != yaml.MappingNode {
-				return false
-			}
-		}
 	}
 
 	return true

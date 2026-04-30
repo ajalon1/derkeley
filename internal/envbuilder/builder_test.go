@@ -20,10 +20,249 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/suite"
+	"gopkg.in/yaml.v3"
 )
 
 func TestBuilderTestSuite(t *testing.T) {
 	suite.Run(t, new(BuilderTestSuite))
+}
+
+func TestPromptFileSchema(t *testing.T) {
+	suite.Run(t, new(PromptFileSchemaTestSuite))
+}
+
+type PromptFileSchemaTestSuite struct {
+	suite.Suite
+	schema *PromptFileSchema
+}
+
+func (suite *PromptFileSchemaTestSuite) SetupTest() {
+	suite.schema = &PromptFileSchema{}
+}
+
+func (suite *PromptFileSchemaTestSuite) TestValidPromptFile() {
+	yamlContent := `
+root:
+  - env: PORT
+    help: Application port
+  - env: DEBUG
+    help: Enable debug mode
+`
+
+	var root yaml.Node
+
+	err := yaml.Unmarshal([]byte(yamlContent), &root)
+	suite.Require().NoError(err)
+
+	validationErr := suite.schema.Validate(root.Content[0])
+	suite.NoError(validationErr, "Valid prompt file should pass validation")
+}
+
+func (suite *PromptFileSchemaTestSuite) TestValidMultipleSections() {
+	yamlContent := `
+root:
+  - env: PORT
+    help: Application port
+config:
+  - env: DB_URL
+    help: Database URL
+  - env: DB_USER
+    help: Database user
+`
+
+	var root yaml.Node
+
+	err := yaml.Unmarshal([]byte(yamlContent), &root)
+	suite.Require().NoError(err)
+
+	validationErr := suite.schema.Validate(root.Content[0])
+	suite.NoError(validationErr, "Valid prompt file with multiple sections should pass")
+}
+
+func (suite *PromptFileSchemaTestSuite) TestValidWithKeyInsteadOfEnv() {
+	yamlContent := `
+root:
+  - key: database-url
+    help: Database connection string
+`
+
+	var root yaml.Node
+
+	err := yaml.Unmarshal([]byte(yamlContent), &root)
+	suite.Require().NoError(err)
+
+	validationErr := suite.schema.Validate(root.Content[0])
+	suite.NoError(validationErr, "Prompt with 'key' instead of 'env' should be valid")
+}
+
+func (suite *PromptFileSchemaTestSuite) TestInvalidRootIsScalar() {
+	yamlContent := `"just a string"`
+
+	var root yaml.Node
+
+	err := yaml.Unmarshal([]byte(yamlContent), &root)
+	suite.Require().NoError(err)
+
+	validationErr := suite.schema.Validate(root.Content[0])
+	suite.Require().Error(validationErr, "Scalar root should fail validation")
+	suite.Require().Contains(validationErr.Error(), "root must be a mapping")
+}
+
+func (suite *PromptFileSchemaTestSuite) TestInvalidRootIsSequence() {
+	yamlContent := `
+- env: PORT
+  help: Application port
+`
+
+	var root yaml.Node
+
+	err := yaml.Unmarshal([]byte(yamlContent), &root)
+	suite.Require().NoError(err)
+
+	validationErr := suite.schema.Validate(root.Content[0])
+	suite.Require().Error(validationErr, "Sequence root should fail validation")
+	suite.Require().Contains(validationErr.Error(), "root must be a mapping")
+}
+
+func (suite *PromptFileSchemaTestSuite) TestInvalidEmptyRoot() {
+	yamlContent := ``
+
+	var root yaml.Node
+
+	err := yaml.Unmarshal([]byte(yamlContent), &root)
+	suite.Require().NoError(err)
+
+	if len(root.Content) == 0 {
+		// Empty YAML has no content, which is expected
+		return
+	}
+
+	validationErr := suite.schema.Validate(root.Content[0])
+	suite.Error(validationErr, "Empty root should fail validation")
+}
+
+func (suite *PromptFileSchemaTestSuite) TestInvalidSectionValueIsScalar() {
+	yamlContent := `
+root: "just a string"
+`
+
+	var root yaml.Node
+
+	err := yaml.Unmarshal([]byte(yamlContent), &root)
+	suite.Require().NoError(err)
+
+	validationErr := suite.schema.Validate(root.Content[0])
+	suite.Require().Error(validationErr, "Section with scalar value should fail validation")
+	suite.Require().Contains(validationErr.Error(), "section value must be a sequence")
+}
+
+func (suite *PromptFileSchemaTestSuite) TestInvalidPromptIsNotMapping() {
+	yamlContent := `
+root:
+  - "just a string"
+`
+
+	var root yaml.Node
+
+	err := yaml.Unmarshal([]byte(yamlContent), &root)
+	suite.Require().NoError(err)
+
+	validationErr := suite.schema.Validate(root.Content[0])
+	suite.Require().Error(validationErr, "Non-mapping prompt should fail validation")
+	suite.Require().Contains(validationErr.Error(), "prompt at index 0 must be a mapping")
+}
+
+func (suite *PromptFileSchemaTestSuite) TestInvalidPromptMissingEnvAndKey() {
+	yamlContent := `
+root:
+  - help: Missing env and key
+`
+
+	var root yaml.Node
+
+	err := yaml.Unmarshal([]byte(yamlContent), &root)
+	suite.Require().NoError(err)
+
+	validationErr := suite.schema.Validate(root.Content[0])
+	suite.Require().Error(validationErr, "Prompt missing env and key should fail validation")
+	suite.Require().Contains(validationErr.Error(), "either 'env' or 'key'")
+}
+
+func (suite *PromptFileSchemaTestSuite) TestInvalidPromptMissingHelp() {
+	yamlContent := `
+root:
+  - env: PORT
+    type: string
+`
+
+	var root yaml.Node
+
+	err := yaml.Unmarshal([]byte(yamlContent), &root)
+	suite.Require().NoError(err)
+
+	validationErr := suite.schema.Validate(root.Content[0])
+	suite.Require().Error(validationErr, "Prompt missing help should fail validation")
+	suite.Require().Contains(validationErr.Error(), "missing recommended 'help' field")
+}
+
+func (suite *PromptFileSchemaTestSuite) TestLooksLikePromptFileValidFile() {
+	yamlContent := []byte(`
+root:
+  - env: PORT
+    help: Application port
+  - env: DEBUG
+    help: Enable debug mode
+`)
+
+	result := looksLikePromptFile(yamlContent)
+	suite.True(result, "Valid prompt file should be recognized")
+}
+
+func (suite *PromptFileSchemaTestSuite) TestLooksLikePromptFileInvalidStructure() {
+	yamlContent := []byte(`
+port: 8080
+debug: true
+`)
+
+	result := looksLikePromptFile(yamlContent)
+	suite.False(result, "Non-prompt config file should not be recognized")
+}
+
+func (suite *PromptFileSchemaTestSuite) TestLooksLikePromptFileCopierAnswerFile() {
+	yamlContent := []byte(`
+project_name: my-project
+project_slug: my_project
+author_email: test@example.com
+`)
+
+	result := looksLikePromptFile(yamlContent)
+	suite.False(result, "Copier answer file should not be recognized as prompt file")
+}
+
+func (suite *PromptFileSchemaTestSuite) TestLooksLikePromptFileVersionManifest() {
+	yamlContent := []byte(`
+version: "1.0.0"
+build_date: "2026-04-30"
+components:
+  - name: api
+    version: "2.1.0"
+  - name: worker
+    version: "1.5.3"
+`)
+
+	result := looksLikePromptFile(yamlContent)
+	suite.False(result, "Version manifest should not be recognized as prompt file")
+}
+
+func (suite *PromptFileSchemaTestSuite) TestLooksLikePromptFileMalformedYAML() {
+	yamlContent := []byte(`
+root:
+  - env: PORT
+    help: "unclosed string
+`)
+
+	result := looksLikePromptFile(yamlContent)
+	suite.True(result, "Malformed YAML should return true to let real unmarshal surface error")
 }
 
 type BuilderTestSuite struct {
