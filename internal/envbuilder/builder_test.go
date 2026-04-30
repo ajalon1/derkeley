@@ -265,6 +265,29 @@ root:
 	suite.True(result, "Malformed YAML should return true to let real unmarshal surface error")
 }
 
+func (suite *PromptFileSchemaTestSuite) TestLooksLikePromptFileAgentYAMLStructure() {
+	// Test with the exact structure from datarobot-agent-application
+	yamlContent := []byte(`root:
+  - env: AGENT_PORT
+    type: string
+    default: "8842"
+    help: "Enter the local port to access the agent. Should be a unique value."
+  - env: DATAROBOT_DEFAULT_EXECUTION_ENVIRONMENT
+    type: string
+    default: "[DataRobot] Python 3.11 GenAI Agents"
+    optional: true
+    help: "Enter the default execution environment for the agent's custom model."
+  - env: DATAROBOT_DEFAULT_EXECUTION_ENVIRONMENT_VERSION_ID
+    type: string
+    default: "69e2134aa5df12076d70afe7"
+    optional: true
+    help: "Enter the default execution environment version ID for the agent's custom model."
+`)
+
+	result := looksLikePromptFile(yamlContent)
+	suite.True(result, "Agent YAML structure should be recognized as valid prompt file")
+}
+
 type BuilderTestSuite struct {
 	suite.Suite
 	tempDir string
