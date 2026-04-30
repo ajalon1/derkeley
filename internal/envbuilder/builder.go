@@ -394,7 +394,7 @@ func (s *PromptFileSchema) Validate(doc *yaml.Node) error {
 				return fmt.Errorf("prompt at index %d must be a mapping, got %v", idx, promptNode.Kind)
 			}
 
-			if err := s.validatePromptNode(promptNode); err != nil {
+			if err := s.validatePromptYaml(promptNode); err != nil {
 				return fmt.Errorf("invalid prompt at index %d: %w", idx, err)
 			}
 		}
@@ -403,9 +403,9 @@ func (s *PromptFileSchema) Validate(doc *yaml.Node) error {
 	return nil
 }
 
-// validatePromptNode validates a single prompt mapping node against the schema.
+// validatePromptYaml validates a single prompt mapping node against the schema.
 // A valid prompt must have at least one of: env or key, and should have help.
-func (s *PromptFileSchema) validatePromptNode(promptNode *yaml.Node) error {
+func (s *PromptFileSchema) validatePromptYaml(promptNode *yaml.Node) error {
 	if len(promptNode.Content) == 0 {
 		return errors.New("prompt mapping is empty")
 	}
