@@ -281,7 +281,7 @@ func filePrompts(yamlFile string) ([]UserPrompt, error) {
 		return nil, fmt.Errorf("Failed to read task yaml file %s: %w", yamlFile, err)
 	}
 
-	if !looksLikePromptFile(data) {
+	if !isPromptFile(data) {
 		log.Debugf("Skipping non-prompt yaml file %s", yamlFile)
 
 		return nil, nil
@@ -356,9 +356,9 @@ func rootSections(fileParsed ParsedYaml) []string {
 	return slices.Sorted(maps.Keys(keys))
 }
 
-// looksLikePromptFile determines whether a YAML file is a prompt-definition file
+// isPromptFile determines whether a YAML file is a prompt-definition file
 // using schema validation. See ValidateAndSkipNonPromptFiles in schema.go.
-func looksLikePromptFile(data []byte) bool {
+func isPromptFile(data []byte) bool {
 	return ValidateAndSkipNonPromptFiles(data)
 }
 

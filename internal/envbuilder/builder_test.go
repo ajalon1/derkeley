@@ -214,7 +214,7 @@ root:
     help: Enable debug mode
 `)
 
-	result := looksLikePromptFile(yamlContent)
+	result := isPromptFile(yamlContent)
 	suite.True(result, "Valid prompt file should be recognized")
 }
 
@@ -224,7 +224,7 @@ port: 8080
 debug: true
 `)
 
-	result := looksLikePromptFile(yamlContent)
+	result := isPromptFile(yamlContent)
 	suite.False(result, "Non-prompt config file should not be recognized")
 }
 
@@ -235,7 +235,7 @@ project_slug: my_project
 author_email: test@example.com
 `)
 
-	result := looksLikePromptFile(yamlContent)
+	result := isPromptFile(yamlContent)
 	suite.False(result, "Copier answer file should not be recognized as prompt file")
 }
 
@@ -250,7 +250,7 @@ components:
     version: "1.5.3"
 `)
 
-	result := looksLikePromptFile(yamlContent)
+	result := isPromptFile(yamlContent)
 	suite.False(result, "Version manifest should not be recognized as prompt file")
 }
 
@@ -261,7 +261,7 @@ root:
     help: "unclosed string
 `)
 
-	result := looksLikePromptFile(yamlContent)
+	result := isPromptFile(yamlContent)
 	suite.True(result, "Malformed YAML should return true to let real unmarshal surface error")
 }
 
@@ -284,7 +284,7 @@ func (suite *PromptFileSchemaTestSuite) TestLooksLikePromptFileAgentYAMLStructur
     help: "Enter the default execution environment version ID for the agent's custom model."
 `)
 
-	result := looksLikePromptFile(yamlContent)
+	result := isPromptFile(yamlContent)
 	suite.True(result, "Agent YAML structure should be recognized as valid prompt file")
 }
 
