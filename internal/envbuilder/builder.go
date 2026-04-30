@@ -287,6 +287,7 @@ func filePrompts(yamlFile string) ([]UserPrompt, error) {
 
 		return nil, nil
 	}
+
 	log.Debugf("Parsing prompts from yaml file %s", yamlFile)
 
 	var fileParsed ParsedYaml
@@ -362,6 +363,8 @@ func rootSections(fileParsed ParsedYaml) []string {
 // are not sequences of mappings, are treated as non-prompt config files and
 // skipped silently. This avoids noisy unmarshal errors on copier answer files,
 // version manifests, and other YAML that happens to live under .datarobot/.
+// TODO We need to actually set up a schema and validate against it, instead of
+// just heuristically checking the shape.
 func looksLikePromptFile(data []byte) bool {
 	var root yaml.Node
 
