@@ -25,7 +25,6 @@ import (
 	"strings"
 
 	"github.com/datarobot/cli/internal/log"
-	"gopkg.in/yaml.v3"
 )
 
 type PromptType string
@@ -89,8 +88,6 @@ type PromptOption struct {
 	Value    string `yaml:"value,omitempty"`
 	Requires string `yaml:"requires,omitempty"`
 }
-
-type ParsedYaml map[string][]UserPrompt
 
 // It will render as:
 //
@@ -289,9 +286,8 @@ func filePrompts(yamlFile string) ([]UserPrompt, error) {
 
 	log.Infof("Parsing prompts from yaml file %s", yamlFile)
 
-	var fileParsed ParsedYaml
-
-	if err = yaml.Unmarshal(data, &fileParsed); err != nil {
+	fileParsed, err := UnmarshalPromptFile(data)
+	if err != nil {
 		return nil, fmt.Errorf("Failed to unmarshal task yaml file %s: %w", yamlFile, err)
 	}
 

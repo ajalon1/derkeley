@@ -18,7 +18,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/datarobot/cli/internal/log"
 	"gopkg.in/yaml.v3"
 )
 
@@ -29,6 +28,10 @@ const (
 	yamlMapping  = "mapping"
 	yamlSequence = "sequence"
 )
+
+// ParsedYaml represents the structure of a prompt definition YAML file,
+// mapping section names to lists of prompts.
+type ParsedYaml map[string][]UserPrompt
 
 // PromptFileSchema validates that a YAML file conforms to the prompt definition schema:
 // - Root must be a mapping (sections)
@@ -150,6 +153,17 @@ func (s *PromptFileSchema) extractPromptFields(promptNode *yaml.Node) promptFiel
 	return fields
 }
 
+// UnmarshalPromptFile unmarshals YAML data into a ParsedYaml map.
+func UnmarshalPromptFile(data []byte) (ParsedYaml, error) {
+	var fileParsed ParsedYaml
+
+	if err := yaml.Unmarshal(data, &fileParsed); err != nil {
+		return nil, err
+	}
+
+	return fileParsed, nil
+}
+
 // ValidateAndSkipNonPromptFiles validates YAML content and returns whether it's a valid prompt file.
 // Non-conforming files are logged as debug messages and skipped silently.
 // This avoids errors on copier answer files, version manifests, and other
@@ -168,7 +182,6 @@ func ValidateAndSkipNonPromptFiles(data []byte) bool {
 
 	schema := &PromptFileSchema{}
 	if err := schema.Validate(root.Content[0]); err != nil {
-		log.Debugf("YAML file does not match prompt schema: %v", err)
 		return false
 	}
 
