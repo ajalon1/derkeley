@@ -15,7 +15,6 @@
 package telemetry
 
 import (
-	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"os"
@@ -26,7 +25,6 @@ import (
 
 	"github.com/datarobot/cli/internal/config"
 	"github.com/datarobot/cli/internal/config/viperx"
-	"github.com/datarobot/cli/internal/drapi"
 	"github.com/datarobot/cli/internal/repo"
 	"github.com/datarobot/cli/internal/version"
 )
@@ -68,9 +66,13 @@ func CollectCommonProperties() *CommonProperties {
 	}
 
 	// Get user ID (currently returns placeholder value)
-	if userID, err := drapi.GetUserID(context.Background()); err == nil {
-		props.UserID = userID
-	}
+	// TODO CFX-5206 implement proper user ID retrieval and consider privacy implications
+	// Additionally, Amplitude strongly suggests not setting user ID until we
+	// absolutely need it, and to not set the same user ID for anon users.
+
+	// if userID, err := drapi.GetUserID(context.Background()); err == nil {
+	// 	props.UserID = userID
+	// }
 
 	// Get template name from repo
 	if templateName, err := getTemplateName(); err == nil {
