@@ -27,6 +27,7 @@ import (
 	"github.com/datarobot/cli/internal/log"
 	"github.com/datarobot/cli/internal/repo"
 	"github.com/datarobot/cli/internal/state"
+	"github.com/datarobot/cli/internal/telemetry"
 	"github.com/datarobot/cli/tui"
 	"github.com/spf13/cobra"
 )
@@ -228,6 +229,10 @@ func init() {
 	// that an explicit --yes does not leak into viper.AllSettings() and
 	// get persisted to drconfig.yaml on subsequent config writes.
 	_ = viperx.BindEnv("yes", "DATAROBOT_CLI_NON_INTERACTIVE")
+
+	telemetry.Track(SetupCmd)
+	telemetry.Track(UpdateCmd)
+	telemetry.Track(ValidateCmd)
 }
 
 // shouldSkipSetup checks if setup should be skipped when --if-needed flag is set.

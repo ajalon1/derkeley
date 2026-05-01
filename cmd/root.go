@@ -89,13 +89,27 @@ using pre-built templates. Get from idea to production in minutes, not hours.
 				props = telemetry.CollectCommonProperties()
 			}
 
+			// Stamp the command_kind common property based on whether
+			// the dispatched command was registered via TrackPlugin.
+			// CommonProperties is held by pointer inside Client, so this
+			// late-bound update is visible at Track time.
+			if props != nil {
+				if telemetry.IsPluginCommand(cmd) {
+					props.CommandKind = "plugin"
+				} else {
+					props.CommandKind = "core"
+				}
+			}
+
 			client := telemetry.NewClient(props)
 
 			// Store telemetry client in context for use by commands
 			cmd.SetContext(context.WithValue(cmd.Context(), telemetryClientKey{}, client))
 
 			// Fire telemetry event for this command (safe before RunE which may call os.Exit)
-			fireCommandEvent(cmd, args, client)
+			if event, ok := telemetry.EventFor(cmd, args); ok {
+				client.Track(event)
+			}
 
 			config.SetAPIConsumerTrace(config.CommandPathToTrace(cmd.CommandPath()))
 
