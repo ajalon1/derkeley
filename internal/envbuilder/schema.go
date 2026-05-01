@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/datarobot/cli/internal/log"
 	"gopkg.in/yaml.v3"
 )
 
@@ -118,7 +119,7 @@ func (s *PromptFileSchema) validatePromptYaml(promptNode *yaml.Node) error {
 	}
 
 	if !fields.hasHelp {
-		return errors.New("prompt missing recommended 'help' field")
+		log.Info("prompt is missing recommended 'help' field for user guidance")
 	}
 
 	return nil
