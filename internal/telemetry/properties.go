@@ -35,6 +35,7 @@ import (
 type CommonProperties struct {
 	// TODO CFX-5206 figure out proper SessionID
 	SessionID string // UUID v4, unique per process invocation
+	DeviceID  string // UUID v4, stable per installation, persisted to disk
 	// TODO CFX-5206 figure out proper UserID
 	UserID            string // Placeholder for future user ID implementation
 	CLIVersion        string // CLI version from version.Version (ldflags)
@@ -52,6 +53,7 @@ type CommonProperties struct {
 func CollectCommonProperties() *CommonProperties {
 	props := &CommonProperties{
 		SessionID:     generateSessionID(),
+		DeviceID:      getOrCreateDeviceID(),
 		CLIVersion:    version.Version,
 		InstallMethod: InstallMethod,
 		OSInfo:        runtime.GOOS + "/" + runtime.GOARCH,
@@ -96,12 +98,16 @@ func (p *CommonProperties) AsMap() map[string]interface{} {
 	}
 }
 
-// generateSessionID creates a UUID v4 for the session.
+// generateSessionID generates a UUID v4 for the current CLI session.
+// This value is not persisted and will be different on each invocation.
+// The default implementation uses crypto/rand, but if that fails, then
+// fallback to a timestamp-based ID with a "fallback-" prefix to
+// indicate it's not a true UUID.
 func generateSessionID() string {
 	b := make([]byte, 16)
 	if _, err := rand.Read(b); err != nil {
-		// Fallback to timestamp-based ID if crypto fails
-		return time.Now().Format("20060102150405") + "-fallback"
+		// Fallback to timestamp-based ID if crypto random generation fails
+		return deviceIDFallbackPrefix + time.Now().UTC().Format(time.RFC3339)
 	}
 
 	// Set version (4) and variant (RFC 4122) bits
@@ -126,6 +132,55 @@ func deriveEnvironment(baseURL string) string {
 	default:
 		return "custom"
 	}
+}
+
+const (
+	deviceIDFileName       = "device_id"
+	deviceIDFallbackPrefix = "fallback-"
+)
+
+// getOrCreateDeviceID returns a stable device identifier.
+func getOrCreateDeviceID() string {
+	// First try to get machine ID from OS
+	if id := getMachineID(); id != "" {
+		return id
+	}
+
+	// Try to read existing device ID from file in the config directory
+	configDir, err := config.GetConfigDir()
+	if err != nil {
+		// If we can't get the config directory, we won't be able to persist a device ID,
+		// so we just generate a new one for this session. These IDs will be prefixed with
+		// deviceIDFallbackPrefix to indicate it is not a true device ID.
+		return deviceIDFallbackPrefix + generateSessionID()
+	}
+
+	// Try to read existing device ID from file
+	deviceIDPath := filepath.Join(configDir, deviceIDFileName)
+
+	data, err := os.ReadFile(deviceIDPath)
+	if err == nil {
+		// If we successfully read a device ID from the file, use it (after trimming whitespace).
+		id := strings.TrimSpace(string(data))
+
+		if id != "" {
+			// If the ID is not empty, return it. Otherwise, we'll generate a new one below.
+			return id
+		}
+	}
+
+	// If we couldn't get a machine ID or read an existing device ID, generate a new one
+	// and save it for future sessions. NOTE: Ignore errors at this point, since we can
+	// still function without persisting.
+	id := deviceIDFallbackPrefix + generateSessionID()
+
+	// At this point, ignore any errors we might have with persisting the device ID, as
+	// telemetry will still function without it, it will just be less stable.
+	if mkErr := os.MkdirAll(configDir, 0o700); mkErr == nil {
+		_ = os.WriteFile(deviceIDPath, []byte(id), 0o600)
+	}
+
+	return id
 }
 
 // getTemplateName attempts to extract the template name from the .datarobot/answers directory.

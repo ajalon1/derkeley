@@ -87,8 +87,9 @@ func (c *Client) Track(event types.Event) {
 
 		event.EventProperties = commonMap
 
-		// Set UserID as top-level field (required by Amplitude)
+		// Set UserID and DeviceID as top-level fields (required by Amplitude)
 		event.UserID = c.props.UserID
+		event.DeviceID = c.props.DeviceID
 	}
 
 	if c.amp == nil {
