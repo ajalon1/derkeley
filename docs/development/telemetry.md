@@ -4,13 +4,25 @@ This document explains how telemetry events are wired to CLI commands and how to
 
 ## Overview
 
-Telemetry events are fired declaratively in `cmd/telemetry_events.go`. The wiring mechanism is centralized in `cmd/root.go`'s `PersistentPreRunE` hook, which fires the appropriate event before the command's business logic runs.
+Telemetry events are wired declaratively at command-construction time using a small API exported by `internal/telemetry`:
+
+| Helper                              | Use when…                                                                       |
+| ----------------------------------- | ------------------------------------------------------------------------------- |
+| `telemetry.Track(cmd)`              | The command needs no extra event properties beyond the common ones.             |
+| `telemetry.TrackWith(cmd, extract)` | The command needs dynamic event properties from flags or args at firing time.  |
+| `telemetry.TrackPlugin(cmd, ver)`   | The command is a plugin command. Adds `plugin_version` and marks `command_kind`. |
+
+Each helper sets a `"telemetry"` annotation on the cobra command. The root
+command's `PersistentPreRunE` calls `telemetry.EventFor(cmd, args)` which
+returns an Amplitude event with `EventType == cmd.CommandPath()` and any
+properties the registered extractor produced.
 
 This approach ensures:
-- **Declarative**: All wirings are visible in one place (`telemetryEventMap`)
-- **Safe**: Events fire in `PersistentPreRunE` before commands that call `os.Exit` directly
-- **Minimal code**: No changes needed to individual command files
-- **Extensible**: Adding a new event requires only one map entry
+
+- **Local**: Wiring lives next to the command it tracks, not in a central map.
+- **Safe**: Events fire in `PersistentPreRunE` before commands that may call `os.Exit` directly.
+- **Extensible**: Adding a new event requires one call where the command is built.
+- **Self-documenting**: The cobra command itself carries its telemetry intent.
 
 ## Architecture
 
@@ -20,9 +32,11 @@ User invokes command
 Cobra parses flags
     ↓
 PersistentPreRunE (root.go)
-    ├─ Initialize telemetry client
-    ├─ Lookup command in telemetryEventMap
-    └─ Fire event via client.Track()
+    ├─ Initialize CommonProperties (session ID, user ID, env, ...)
+    ├─ Stamp props.CommandKind = "core" or "plugin"
+    │   based on telemetry.IsPluginCommand(cmd)
+    ├─ Build telemetry.Client
+    └─ telemetry.EventFor(cmd, args) → if tracked, client.Track(event)
     ↓
 RunE / Run executes (may call os.Exit)
     ↓
@@ -30,137 +44,137 @@ PersistentPostRunE (root.go)
     └─ Flush telemetry (3-second timeout)
 ```
 
-The telemetry client is stored in the command's context for access by subcommands and packages. Common properties (session ID, CLI version, user ID, environment, template name, etc.) are automatically merged into every event by `client.Track()`.
+`Client.Track` merges the `CommonProperties` map (which now includes
+`command_kind`) into every event before sending.
+
+## Common Properties
+
+Collected once per CLI invocation in `telemetry.CollectCommonProperties`:
+
+| Property             | Source                                                          |
+| -------------------- | --------------------------------------------------------------- |
+| `session_id`         | UUID v4 generated per process                                  |
+| `user_id`            | `drapi.GetUserID` (currently a placeholder)                     |
+| `cli_version`        | `internal/version.Version` (ldflags)                            |
+| `install_method`     | `telemetry.InstallMethod` (ldflags; defaults to `"source"`)     |
+| `os_info`            | `runtime.GOOS + "/" + runtime.GOARCH`                           |
+| `environment`        | Derived from `endpoint` config (US / EU / JP / custom)         |
+| `datarobot_instance` | Base URL of configured DataRobot instance                       |
+| `command_kind`       | `"core"` or `"plugin"` — set by the root after dispatch         |
+
+> `template_name` was removed in favor of letting individual commands
+> contribute their own context via `TrackWith`.
 
 ## How to Add Telemetry to a New Command
 
-### 1. Identify the Event and Command Path
+### 1. Decide what (if anything) to extract
 
-First, determine:
-- The event type (e.g., `"dr dotenv setup"`)
-- The parameters the event should include (e.g., `template_name`)
-- How to extract those parameters from the command or arguments
+Inspect the command's flags and args. Decide which (if any) should be
+exposed as event properties.
 
-### 2. Create an Event Constructor (if not already present)
+### 2. Wire the command at construction
 
-Add a typed constructor to `internal/telemetry/events.go`:
+Find the function (or `init`) that builds the cobra command and add a
+`telemetry.Track*` call before returning.
 
-```go
-func NewDrFooBarEvent(param1, param2 string) types.Event {
-    return types.Event{
-        EventType: "dr foo bar",
-        EventProperties: map[string]any{
-            "param_1": param1,
-            "param_2": param2,
-        },
-    }
-}
-```
-
-Also add a test in `internal/telemetry/events_test.go`.
-
-### 3. Wire the Command in `cmd/telemetry_events.go`
-
-Add an entry to `telemetryEventMap`:
+**Simple command, no extra properties:**
 
 ```go
-"dr foo bar": func(cmd *cobra.Command, args []string) types.Event {
-    // Extract parameters from cmd flags or args
-    return telemetry.NewDrFooBarEvent(firstArg(args), "")
-},
-```
+import "github.com/datarobot/cli/internal/telemetry"
 
-**Common patterns:**
-
-- **Simple command with no parameters:**
-  ```go
-  "dr foo": func(*cobra.Command, []string) types.Event { 
-      return telemetry.NewDrFooEvent("") 
-  },
-  ```
-
-- **Command with argument:**
-  ```go
-  "dr foo bar": func(_ *cobra.Command, args []string) types.Event { 
-      return telemetry.NewDrFooBarEvent(firstArg(args), "") 
-  },
-  ```
-
-- **Command with flag:**
-  ```go
-  "dr foo bar": func(cmd *cobra.Command, _ []string) types.Event { 
-      val, _ := cmd.Flags().GetString("flag-name")
-      return telemetry.NewDrFooBarEvent(val, "") 
-  },
-  ```
-
-### 4. Test the Wiring
-
-Add a test in `cmd/telemetry_events_test.go` (create if it doesn't exist):
-
-```go
-func TestTelemetryEventMap_DrFooBar(t *testing.T) {
+func Cmd() *cobra.Command {
     cmd := &cobra.Command{
-        Use: "bar",
-        // ... other fields ...
+        Use:   "foo",
+        Short: "Do foo",
+        // ...
     }
-    cmd.Flags().String("my-flag", "default", "Help text")
-    _ = cmd.Flags().Set("my-flag", "test-value")
 
-    factory, ok := telemetryEventMap["dr foo bar"]
-    assert.True(t, ok)
+    telemetry.Track(cmd)
 
-    event := factory(cmd, []string{"arg1"})
-    assert.Equal(t, "dr foo bar", event.EventType)
-    assert.Equal(t, "arg1", event.EventProperties["param_1"])
+    return cmd
 }
 ```
 
-## Special Case: Dynamic Commands (Plugins)
-
-For commands that are discovered/registered at runtime (e.g., plugin commands), use **cobra annotations** instead of the static map:
+**Command that contributes properties from positional args:**
 
 ```go
-// In createPluginCommand or wherever the command is created:
-cmd.Annotations = map[string]string{
-    "telemetry:plugin-name":    pluginName,
-    "telemetry:plugin-version": pluginVersion,
-}
+telemetry.TrackWith(cmd, func(_ *cobra.Command, args []string) map[string]any {
+    return map[string]any{
+        "component_name": telemetry.FirstArg(args),
+    }
+})
 ```
 
-The `fireCommandEvent` function in `cmd/telemetry_events.go` checks for these annotations and fires `NewDrPluginExecuteEvent` automatically.
+**Command that contributes a property from a flag:**
 
-## Template Name Handling
+```go
+telemetry.TrackWith(cmd, func(c *cobra.Command, args []string) map[string]any {
+    ver, _ := c.Flags().GetString("version")
 
-You may notice that event constructors are called with `template_name=""`. This is intentional:
+    return map[string]any{
+        "plugin_name":    telemetry.FirstArg(args),
+        "plugin_version": ver,
+    }
+})
+```
 
-- The telemetry client automatically detects the template name by scanning `.datarobot/answers/` in the repository
-- This value is merged into `CommonProperties` and included in every event
-- There's no need to extract it per-command; it's detected once per CLI invocation and reused
+### 3. Add the command's path to the wiring test
 
-If you need a different template name for a specific event, pass it explicitly to the event constructor.
+Edit `cmd/telemetry_wiring_test.go` and add the new `cmd.CommandPath()`
+to `expectedTrackedCommands`. The test will fail loudly if anyone later
+removes the wiring.
+
+### 4. Test it
+
+```bash
+task test
+task lint
+```
+
+Run the CLI with telemetry disabled (the dev default) and check the
+debug log to see your event:
+
+```bash
+dr foo --debug
+# .dr-tui-debug.log will include "Telemetry event (dry-run)" entries
+```
+
+## Plugin Commands
+
+Plugin commands are discovered at runtime by
+`cmd/plugin/discovery.go::createPluginCommand`, which calls
+`telemetry.TrackPlugin(cmd, manifest.Version)`. This:
+
+- Sets the `"telemetry"` annotation so `EventFor` will fire an event.
+- Sets the `"telemetry:plugin"` annotation so `IsPluginCommand` returns
+  true, which causes the root to stamp `command_kind = "plugin"` on the
+  common properties.
+- Registers an extractor that adds `plugin_version` to the event.
+
+The event type is `cmd.CommandPath()` — for example `dr assist`. There
+is no longer a synthetic `"dr plugin execute"` event.
 
 ## Testing
 
 Run the telemetry test suite:
 
 ```bash
-task test -- internal/telemetry/...
+task test -- ./internal/telemetry/... ./cmd/...
 ```
 
-To test wiring in an integration context:
+Key tests:
 
-```bash
-# Dry-run mode shows events without sending them
-DATAROBOT_CLI_DISABLE_TELEMETRY=false dr <command> --help
-```
+- `internal/telemetry/wire_test.go` — exercises `Track`, `TrackWith`,
+  `TrackPlugin`, `EventFor`, `IsPluginCommand`, `FirstArg`.
+- `internal/telemetry/properties_test.go` — exercises common properties
+  including `command_kind`.
+- `cmd/telemetry_wiring_test.go` — verifies that every expected core
+  command path is wired in the static command tree.
 
-Events will be logged to the debug logger (`.dr-tui-debug.log` if `--debug` is set).
+## Cleanup Checklist
 
-## Cleanup
-
-- **Changing a command name?** Update the key in `telemetryEventMap`.
-- **Removing a command?** Remove the entry from `telemetryEventMap`.
-- **Changing event properties?** Update the event constructor and its tests.
-
-All changes are localized to `cmd/telemetry_events.go` and `internal/telemetry/events.go`.
+- **Renaming a command?** The event type follows `cmd.CommandPath()`
+  automatically, but you must update `expectedTrackedCommands` in
+  `cmd/telemetry_wiring_test.go`.
+- **Removing a command?** Remove its `expectedTrackedCommands` entry.
+- **Changing event properties?** Update the closure passed to `TrackWith`.
