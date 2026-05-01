@@ -47,7 +47,7 @@ func TestCommonPropertiesAsMap(t *testing.T) {
 		OSInfo:            "darwin/arm64",
 		Environment:       "US",
 		DataRobotInstance: "https://app.datarobot.com",
-		TemplateName:      "base",
+		CommandKind:       "core",
 	}
 
 	m := props.AsMap()
@@ -59,9 +59,20 @@ func TestCommonPropertiesAsMap(t *testing.T) {
 	assert.Equal(t, "darwin/arm64", m["os_info"])
 	assert.Equal(t, "US", m["environment"])
 	assert.Equal(t, "https://app.datarobot.com", m["datarobot_instance"])
-	assert.Equal(t, "base", m["template_name"])
+	assert.Equal(t, "core", m["command_kind"])
 	// Verify CWD is not included
 	assert.NotContains(t, m, "cwd")
+}
+
+func TestCommonPropertiesAsMap_DefaultCommandKindIsEmpty(t *testing.T) {
+	props := &CommonProperties{}
+
+	m := props.AsMap()
+
+	// CommandKind is set by the root command after dispatch; the freshly
+	// collected properties default to an empty string.
+	assert.Empty(t, m["command_kind"])
+	assert.Contains(t, m, "command_kind")
 }
 
 func TestDeriveEnvironment_US(t *testing.T) {
@@ -107,4 +118,13 @@ func TestCollectCommonProperties_SetsCLIVersion(t *testing.T) {
 
 	// Should be populated from version package
 	assert.NotEmpty(t, props.CLIVersion)
+}
+
+func TestCollectCommonProperties_DefaultCommandKindIsEmpty(t *testing.T) {
+	props := CollectCommonProperties()
+
+	// CommandKind is intentionally not populated by CollectCommonProperties;
+	// the root command sets it once it knows whether the dispatched command
+	// is a core or plugin command.
+	assert.Empty(t, props.CommandKind)
 }
