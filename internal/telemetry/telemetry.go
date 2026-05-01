@@ -78,11 +78,6 @@ func NewClient(props *CommonProperties) *Client {
 // This call is non-blocking. When the client is a no-op (dev builds),
 // the event is logged via log.Debug instead.
 func (c *Client) Track(event types.Event) {
-	if c.amp == nil {
-		log.Debug("Telemetry event (dry-run)", "type", event.EventType, "properties", event.EventProperties)
-		return
-	}
-
 	// Merge common properties into event properties
 	if c.props != nil {
 		commonMap := c.props.AsMap()
@@ -94,6 +89,11 @@ func (c *Client) Track(event types.Event) {
 
 		// Set UserID as top-level field (required by Amplitude)
 		event.UserID = c.props.UserID
+	}
+
+	if c.amp == nil {
+		log.Debug("Telemetry event (dry-run)", "type", event.EventType, "properties", event.EventProperties)
+		return
 	}
 
 	c.amp.Track(event)
