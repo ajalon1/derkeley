@@ -188,7 +188,7 @@ root:
 	suite.Require().Contains(validationErr.Error(), "either 'env' or 'key'")
 }
 
-func (suite *PromptFileSchemaTestSuite) TestInvalidPromptMissingHelp() {
+func (suite *PromptFileSchemaTestSuite) TestValidPromptMissingHelpIsAllowed() {
 	yamlContent := `
 root:
   - env: PORT
@@ -201,8 +201,7 @@ root:
 	suite.Require().NoError(err)
 
 	validationErr := suite.schema.Validate(root.Content[0])
-	suite.Require().Error(validationErr, "Prompt missing help should fail validation")
-	suite.Require().Contains(validationErr.Error(), "missing recommended 'help' field")
+	suite.NoError(validationErr, "Prompt missing help should be valid (warning logged, not error)")
 }
 
 func (suite *PromptFileSchemaTestSuite) TestLooksLikePromptFileValidFile() {
