@@ -62,9 +62,6 @@ Collected once per CLI invocation in `telemetry.CollectCommonProperties`:
 | `datarobot_instance` | Base URL of configured DataRobot instance                       |
 | `command_kind`       | `"core"` or `"plugin"` — set by the root after dispatch         |
 
-> `template_name` was removed in favor of letting individual commands
-> contribute their own context via `TrackWith`.
-
 ## How to Add Telemetry to a New Command
 
 ### 1. Decide what (if anything) to extract
