@@ -27,6 +27,8 @@ const trackAnnotation = "telemetry"
 
 // pluginAnnotation is the cobra annotation key set by TrackPlugin to mark
 // a command as a plugin command (used to populate the command_kind common property).
+// For now this is a bool, because we may want to track when plugin commands are
+// migrated to core commands.
 const pluginAnnotation = "telemetry:plugin"
 
 // annotationValue is the (otherwise unused) value stored under trackAnnotation
@@ -34,14 +36,17 @@ const pluginAnnotation = "telemetry:plugin"
 // care whether the key is present.
 const annotationValue = "true"
 
-// PropExtractor returns dynamic event-properties for a command invocation.
-// It is invoked at telemetry-event-firing time with the cobra command and
+// PropExtractor returns a map of dynamic event-properties, basically a
+// context, to be merged into the telemetry event fired for a command. It is
+// It is invoked when we fire a telemetry event with the cobra command and
 // the positional args passed to it.
+// TODO I don't like that I have to use a map[string]any here instead of a
+// struct or something more type safe. Refactor?
 type PropExtractor func(cmd *cobra.Command, args []string) map[string]any
 
-// dynamic stores per-command PropExtractor closures registered via TrackWith /
+// commandProperties stores per-command PropExtractor closures registered via TrackWith /
 // TrackPlugin. Keyed by *cobra.Command pointer.
-var dynamic sync.Map // map[*cobra.Command]PropExtractor
+var commandProperties sync.Map // map[*cobra.Command]PropExtractor
 
 // Track marks cmd as one whose invocation should fire a telemetry event.
 // The event's EventType is derived from cmd.CommandPath() and no extra
@@ -58,7 +63,7 @@ func TrackWith(cmd *cobra.Command, extract PropExtractor) {
 	setAnnotation(cmd, trackAnnotation)
 
 	if extract != nil {
-		dynamic.Store(cmd, extract)
+		commandProperties.Store(cmd, extract)
 	}
 }
 
@@ -70,7 +75,7 @@ func TrackPlugin(cmd *cobra.Command, version string) {
 	setAnnotation(cmd, trackAnnotation)
 	setAnnotation(cmd, pluginAnnotation)
 
-	dynamic.Store(cmd, PropExtractor(func(_ *cobra.Command, _ []string) map[string]any {
+	commandProperties.Store(cmd, PropExtractor(func(_ *cobra.Command, _ []string) map[string]any {
 		return map[string]any{
 			"plugin_version": version,
 		}
@@ -106,7 +111,7 @@ func EventFor(cmd *cobra.Command, args []string) (types.Event, bool) {
 		EventProperties: map[string]any{},
 	}
 
-	if v, ok := dynamic.Load(cmd); ok {
+	if v, ok := commandProperties.Load(cmd); ok {
 		if extract, ok := v.(PropExtractor); ok && extract != nil {
 			for k, val := range extract(cmd, args) {
 				event.EventProperties[k] = val
