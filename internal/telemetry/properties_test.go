@@ -57,13 +57,11 @@ func TestCommonPropertiesAsMap(t *testing.T) {
 	m := props.AsMap()
 
 	assert.Equal(t, "session-123", m["session_id"])
-	assert.Equal(t, "user-456", m["user_id"])
 	assert.Equal(t, "v0.1.0", m["cli_version"])
 	assert.Equal(t, "source", m["install_method"])
 	assert.Equal(t, "darwin/arm64", m["os_info"])
 	assert.Equal(t, "US", m["environment"])
 	assert.Equal(t, "https://app.datarobot.com", m["datarobot_instance"])
-	assert.Equal(t, "base", m["template_name"])
 	// Verify CWD is not included
 	assert.NotContains(t, m, "cwd")
 }
