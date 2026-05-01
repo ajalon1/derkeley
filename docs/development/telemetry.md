@@ -9,8 +9,8 @@ Telemetry events are wired declaratively at command-construction time using a sm
 | Helper                              | Use when…                                                                       |
 | ----------------------------------- | ------------------------------------------------------------------------------- |
 | `telemetry.Track(cmd)`              | The command needs no extra event properties beyond the common ones.             |
-| `telemetry.TrackWith(cmd, extract)` | The command needs dynamic event properties from flags or args at firing time.  |
-| `telemetry.TrackPlugin(cmd, ver)`   | The command is a plugin command. Adds `plugin_version` and marks `command_kind`. |
+| `telemetry.TrackWith(cmd, extract)` | The command needs dynamic event properties from flags or args at firing time.   |
+| `telemetry.TrackPlugin(cmd, ver)`   | The command comes from a plugin. Adds `plugin_version` and sets `command_kind`. |
 
 Each helper sets a `"telemetry"` annotation on the cobra command. The root
 command's `PersistentPreRunE` calls `telemetry.EventFor(cmd, args)` which
@@ -53,12 +53,12 @@ Collected once per CLI invocation in `telemetry.CollectCommonProperties`:
 
 | Property             | Source                                                          |
 | -------------------- | --------------------------------------------------------------- |
-| `session_id`         | UUID v4 generated per process                                  |
+| `session_id`         | UUID v4 generated per process                                   |
 | `user_id`            | `drapi.GetUserID` (currently a placeholder)                     |
 | `cli_version`        | `internal/version.Version` (ldflags)                            |
 | `install_method`     | `telemetry.InstallMethod` (ldflags; defaults to `"source"`)     |
 | `os_info`            | `runtime.GOOS + "/" + runtime.GOARCH`                           |
-| `environment`        | Derived from `endpoint` config (US / EU / JP / custom)         |
+| `environment`        | Derived from `endpoint` config (US / EU / JP / custom)          |
 | `datarobot_instance` | Base URL of configured DataRobot instance                       |
 | `command_kind`       | `"core"` or `"plugin"` — set by the root after dispatch         |
 
