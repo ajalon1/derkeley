@@ -27,7 +27,6 @@ import (
 	"github.com/datarobot/cli/internal/config"
 	"github.com/datarobot/cli/internal/config/viperx"
 	"github.com/datarobot/cli/internal/drapi"
-	"github.com/datarobot/cli/internal/repo"
 	"github.com/datarobot/cli/internal/version"
 )
 
@@ -175,39 +174,4 @@ func getOrCreateDeviceID() string {
 	}
 
 	return id
-}
-
-// getTemplateName attempts to extract the template name from the .datarobot/answers directory.
-// Returns empty string if not in a DataRobot repo.
-// TODO I think this could be moved to internal/repo and more robustly implemented.
-func getTemplateName() (string, error) {
-	repoRoot, err := repo.FindRepoRoot()
-	if err != nil {
-		return "", err
-	}
-
-	answersDir := filepath.Join(repoRoot, ".datarobot", "answers")
-
-	entries, err := os.ReadDir(answersDir)
-	if err != nil {
-		return "", err
-	}
-
-	// Try to find the first YAML file that might indicate template name
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-
-		name := entry.Name()
-		if strings.HasSuffix(name, ".yml") || strings.HasSuffix(name, ".yaml") {
-			// Extract template name from filename (e.g., "base.yml" -> "base")
-			baseName := strings.TrimSuffix(name, filepath.Ext(name))
-			if baseName != "" {
-				return baseName, nil
-			}
-		}
-	}
-
-	return "", nil
 }
