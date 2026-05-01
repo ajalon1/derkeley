@@ -37,7 +37,7 @@ const pluginAnnotation = "telemetry:plugin"
 const annotationValue = "true"
 
 // PropExtractor returns a map of dynamic event-properties, basically a
-// context, to be merged into the telemetry event fired for a command. It is
+// context, to be merged into the telemetry event fired for a command.
 // It is invoked when we fire a telemetry event with the cobra command and
 // the positional args passed to it.
 // TODO I don't like that I have to use a map[string]any here instead of a
