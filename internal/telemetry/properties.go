@@ -25,7 +25,6 @@ import (
 
 	"github.com/datarobot/cli/internal/config"
 	"github.com/datarobot/cli/internal/config/viperx"
-	"github.com/datarobot/cli/internal/repo"
 	"github.com/datarobot/cli/internal/version"
 )
 
@@ -43,7 +42,7 @@ type CommonProperties struct {
 	OSInfo            string // runtime.GOOS/runtime.GOARCH
 	Environment       string // US, EU, JP, or custom — from endpoint URL
 	DataRobotInstance string // Base URL of configured DataRobot instance
-	TemplateName      string // Best-effort from .datarobot/answers/ dir
+	CommandKind       string // "core" or "plugin", set by the root command after dispatch
 }
 
 // CollectCommonProperties gathers all common telemetry properties from the
@@ -76,11 +75,6 @@ func CollectCommonProperties() *CommonProperties {
 	// 	props.UserID = userID
 	// }
 
-	// Get template name from repo
-	if templateName, err := getTemplateName(); err == nil {
-		props.TemplateName = templateName
-	}
-
 	return props
 }
 
@@ -94,7 +88,7 @@ func (p *CommonProperties) AsMap() map[string]interface{} {
 		"os_info":            p.OSInfo,
 		"environment":        p.Environment,
 		"datarobot_instance": p.DataRobotInstance,
-		"template_name":      p.TemplateName,
+		"command_kind":       p.CommandKind,
 	}
 }
 
@@ -181,39 +175,4 @@ func getOrCreateDeviceID() string {
 	}
 
 	return id
-}
-
-// getTemplateName attempts to extract the template name from the .datarobot/answers directory.
-// Returns empty string if not in a DataRobot repo.
-// TODO I think this could be moved to internal/repo and more robustly implemented.
-func getTemplateName() (string, error) {
-	repoRoot, err := repo.FindRepoRoot()
-	if err != nil {
-		return "", err
-	}
-
-	answersDir := filepath.Join(repoRoot, ".datarobot", "answers")
-
-	entries, err := os.ReadDir(answersDir)
-	if err != nil {
-		return "", err
-	}
-
-	// Try to find the first YAML file that might indicate template name
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-
-		name := entry.Name()
-		if strings.HasSuffix(name, ".yml") || strings.HasSuffix(name, ".yaml") {
-			// Extract template name from filename (e.g., "base.yml" -> "base")
-			baseName := strings.TrimSuffix(name, filepath.Ext(name))
-			if baseName != "" {
-				return baseName, nil
-			}
-		}
-	}
-
-	return "", nil
 }
