@@ -45,7 +45,7 @@ type CommonProperties struct {
 	OSInfo            string // runtime.GOOS/runtime.GOARCH
 	Environment       string // US, EU, JP, or custom — from endpoint URL
 	DataRobotInstance string // Base URL of configured DataRobot instance
-	TemplateName      string // Best-effort from .datarobot/answers/ dir
+	CommandKind       string // "core" or "plugin", set by the root command after dispatch
 }
 
 // CollectCommonProperties gathers all common telemetry properties from the
@@ -74,11 +74,6 @@ func CollectCommonProperties() *CommonProperties {
 		props.UserID = userID
 	}
 
-	// Get template name from repo
-	if templateName, err := getTemplateName(); err == nil {
-		props.TemplateName = templateName
-	}
-
 	return props
 }
 
@@ -93,7 +88,7 @@ func (p *CommonProperties) AsMap() map[string]interface{} {
 		"os_info":            p.OSInfo,
 		"environment":        p.Environment,
 		"datarobot_instance": p.DataRobotInstance,
-		"template_name":      p.TemplateName,
+		"command_kind":       p.CommandKind,
 	}
 }
 
