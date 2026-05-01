@@ -119,6 +119,9 @@ func (s *PromptFileSchema) validatePromptYaml(promptNode *yaml.Node) error {
 	}
 
 	if !fields.hasHelp {
+		// TODO should UserPrompt.Help be required? Check in all existing templates
+		// to see if any are missing it, and if so, change this back to return error
+		// in a follow-up PR. For now, just log a warning.
 		log.Info("prompt is missing recommended 'help' field for user guidance")
 	}
 
