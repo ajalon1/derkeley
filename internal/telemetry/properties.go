@@ -87,7 +87,6 @@ func CollectCommonProperties() *CommonProperties {
 func (p *CommonProperties) AsMap() map[string]interface{} {
 	return map[string]interface{}{
 		"session_id":         p.SessionID,
-		"user_id":            p.UserID,
 		"cli_version":        p.CLIVersion,
 		"install_method":     p.InstallMethod,
 		"os_info":            p.OSInfo,
