@@ -210,12 +210,12 @@ See [Telemetry](telemetry.md) for event tracking and analytics details.
 graph TD
     A["CLI Startup"]
     
-    A --> B["Check if<br/>device_id exists<br/>in drconfig.yaml"]
+    A --> B["Check if<br/>device_id exists<br/>in ~/.config/datarobot/device_id"]
     
     B -->|Found| C["Use stored<br/>device_id"]
     B -->|Not found| D["Generate new<br/>UUID v4"]
     
-    D --> E["Store in<br/>drconfig.yaml"]
+    D --> E["Store in<br/>device_id file"]
     
     C --> F["Include in all<br/>telemetry events"]
     E --> F
