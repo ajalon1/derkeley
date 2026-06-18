@@ -27,6 +27,7 @@ import (
 	"testing"
 
 	"github.com/datarobot/cli/internal/drapi/filesapi"
+	"github.com/datarobot/cli/internal/outputformat"
 	"github.com/datarobot/cli/internal/workload"
 	"github.com/datarobot/cli/internal/workload/wapi"
 	"github.com/spf13/cobra"
@@ -153,6 +154,10 @@ func newTestCmd(t *testing.T, dir string, deps Deps, args []string) (*cobra.Comm
 	t.Helper()
 
 	cmd := cmdWithDeps(deps)
+
+	var outputFormat outputformat.OutputFormat
+	outputformat.AddPersistentFlag(cmd, &outputFormat)
+
 	cmd.PreRunE = nil
 
 	var buf bytes.Buffer
@@ -321,7 +326,7 @@ func TestCheckout_JSONOutput(t *testing.T) {
 	deps := fakeDeps(draftArtifact("art-abc-123"), fc)
 
 	cmd, buf := newTestCmd(t, dir, deps, []string{verA})
-	require.NoError(t, cmd.Flags().Set("output-format", "json"))
+	require.NoError(t, cmd.PersistentFlags().Set("output-format", "json"))
 
 	require.NoError(t, cmd.Execute())
 
@@ -459,7 +464,7 @@ func TestCheckout_CleanAllJSONEmptyArray(t *testing.T) {
 
 	cmd, buf := newTestCmd(t, dir, Deps{}, nil)
 	require.NoError(t, cmd.Flags().Set("clean", "true"))
-	require.NoError(t, cmd.Flags().Set("output-format", "json"))
+	require.NoError(t, cmd.PersistentFlags().Set("output-format", "json"))
 
 	require.NoError(t, cmd.Execute())
 

@@ -23,6 +23,7 @@ import (
 
 	"github.com/datarobot/cli/cmd/pipeline/internal/testutil"
 	"github.com/datarobot/cli/internal/drapi"
+	"github.com/datarobot/cli/internal/outputformat"
 	"github.com/datarobot/cli/internal/pipeline"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -102,6 +103,10 @@ func TestCmd_RejectsMissingPipeline(t *testing.T) {
 
 func TestCmd_RejectsBadOutput(t *testing.T) {
 	cmd := Cmd()
+
+	var outputFormat outputformat.OutputFormat
+	outputformat.AddPersistentFlag(cmd, &outputFormat)
+
 	cmd.SetArgs([]string{"--pipeline", "p", "--output-format", "yaml"})
 	cmd.SetOut(io.Discard)
 	cmd.SetErr(io.Discard)

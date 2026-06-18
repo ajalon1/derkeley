@@ -76,6 +76,10 @@ func TestPrintLockHuman_NoTasks(t *testing.T) {
 
 func TestCmd_RejectsInvalidOutput(t *testing.T) {
 	cmd := Cmd()
+
+	var outputFormat outputformat.OutputFormat
+	outputformat.AddPersistentFlag(cmd, &outputFormat)
+
 	cmd.SetArgs([]string{"abc", "--output-format", "yaml"})
 	cmd.SetOut(io.Discard)
 	cmd.SetErr(io.Discard)

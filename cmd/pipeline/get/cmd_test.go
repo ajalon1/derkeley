@@ -127,6 +127,10 @@ func TestCmd_RequiresArg(t *testing.T) {
 
 func TestCmd_RejectsInvalidOutput(t *testing.T) {
 	cmd := Cmd()
+
+	var outputFormat outputformat.OutputFormat
+	outputformat.AddPersistentFlag(cmd, &outputFormat)
+
 	cmd.SetArgs([]string{"some-id", "--output-format", "yaml"})
 	cmd.SetOut(io.Discard)
 	cmd.SetErr(io.Discard)
@@ -139,7 +143,11 @@ func TestCmd_RejectsInvalidOutput(t *testing.T) {
 
 func TestCmd_HasOutputFlag(t *testing.T) {
 	cmd := Cmd()
-	assert.NotNil(t, cmd.Flags().Lookup("output-format"))
+
+	var outputFormat outputformat.OutputFormat
+	outputformat.AddPersistentFlag(cmd, &outputFormat)
+
+	assert.NotNil(t, cmd.PersistentFlags().Lookup("output-format"))
 }
 
 func TestHandleGetError_NotFoundPrintsFriendlyMessage(t *testing.T) {

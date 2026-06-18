@@ -20,6 +20,7 @@ import (
 	"io"
 	"testing"
 
+	"github.com/datarobot/cli/internal/outputformat"
 	"github.com/datarobot/cli/internal/workload/sync"
 	"github.com/datarobot/cli/internal/workload/sync/display"
 	"github.com/datarobot/cli/internal/workload/wapi"
@@ -106,10 +107,18 @@ func runWithDeps(t *testing.T, deps Deps, flags map[string]string, extraArgs ...
 	t.Helper()
 
 	cmd := cmdWithDeps(deps)
+
+	var outputFormat outputformat.OutputFormat
+	outputformat.AddPersistentFlag(cmd, &outputFormat)
+
 	cmd.PreRunE = nil
 
 	for k, v := range flags {
-		require.NoError(t, cmd.Flags().Set(k, v))
+		if cmd.Flags().Lookup(k) != nil {
+			require.NoError(t, cmd.Flags().Set(k, v))
+		} else {
+			require.NoError(t, cmd.PersistentFlags().Set(k, v))
+		}
 	}
 
 	cmd.SetArgs(extraArgs)

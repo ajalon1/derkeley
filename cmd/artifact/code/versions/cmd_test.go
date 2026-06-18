@@ -24,6 +24,7 @@ import (
 
 	"github.com/datarobot/cli/internal/drapi"
 	"github.com/datarobot/cli/internal/drapi/filesapi"
+	"github.com/datarobot/cli/internal/outputformat"
 	"github.com/datarobot/cli/internal/workload"
 	"github.com/datarobot/cli/internal/workload/wapi"
 	"github.com/spf13/cobra"
@@ -98,6 +99,10 @@ func newTestCmd(t *testing.T, dir string, deps Deps) (*cobra.Command, *bytes.Buf
 	t.Helper()
 
 	cmd := cmdWithDeps(deps)
+
+	var outputFormat outputformat.OutputFormat
+	outputformat.AddPersistentFlag(cmd, &outputFormat)
+
 	cmd.PreRunE = nil
 
 	var buf bytes.Buffer
@@ -229,7 +234,7 @@ func TestVersions_JSONOutput(t *testing.T) {
 	)
 
 	cmd, buf := newTestCmd(t, dir, deps)
-	require.NoError(t, cmd.Flags().Set("output-format", "json"))
+	require.NoError(t, cmd.PersistentFlags().Set("output-format", "json"))
 
 	require.NoError(t, cmd.Execute())
 

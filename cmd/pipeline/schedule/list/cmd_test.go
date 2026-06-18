@@ -18,6 +18,7 @@ import (
 	"io"
 	"testing"
 
+	"github.com/datarobot/cli/internal/outputformat"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -26,6 +27,10 @@ func runCmd(t *testing.T, args ...string) error {
 	t.Helper()
 
 	cmd := Cmd()
+
+	var outputFormat outputformat.OutputFormat
+	outputformat.AddPersistentFlag(cmd, &outputFormat)
+
 	cmd.SetArgs(args)
 	cmd.SetOut(io.Discard)
 	cmd.SetErr(io.Discard)
@@ -55,7 +60,7 @@ func TestCmd_RejectsMissingVersion(t *testing.T) {
 func TestCmd_HasExpectedFlags(t *testing.T) {
 	cmd := Cmd()
 
-	for _, name := range []string{"pipeline", "version", "offset", "limit", "output-format"} {
+	for _, name := range []string{"pipeline", "version", "offset", "limit"} {
 		assert.NotNilf(t, cmd.Flags().Lookup(name), "expected --%s flag", name)
 	}
 }

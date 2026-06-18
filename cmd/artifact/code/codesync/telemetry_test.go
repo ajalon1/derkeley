@@ -17,6 +17,7 @@ package codesync
 import (
 	"testing"
 
+	"github.com/datarobot/cli/internal/outputformat"
 	"github.com/datarobot/cli/internal/telemetry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -29,7 +30,18 @@ func TestTelemetry_AnnotationSet(t *testing.T) {
 
 func TestTelemetry_ExtractorPropertiesAfterFlagParse(t *testing.T) {
 	cmd := Cmd()
-	require.NoError(t, cmd.ParseFlags([]string{"--dry-run", "--yes", "--output-format=json"}))
+
+	var outputFormat outputformat.OutputFormat
+	outputformat.AddPersistentFlag(cmd, &outputFormat)
+
+	cmd.PreRunE = nil
+	cmd.SetArgs([]string{"--dry-run", "--yes", "--output-format", "json"})
+
+	// RunE sets the captured outputFormat variable via outputformat.GetFormat(cmd).
+	// The command will error because no .wapi/ directory exists, but the
+	// outputFormat variable is assigned before runSync is called, so the
+	// telemetry extractor can read the correct value.
+	_ = cmd.Execute()
 
 	event, ok := telemetry.EventFor(cmd, nil)
 	require.True(t, ok, "EventFor must return ok=true for an annotated command")

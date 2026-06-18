@@ -17,6 +17,7 @@ package lock
 import (
 	"testing"
 
+	"github.com/datarobot/cli/internal/outputformat"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -31,6 +32,10 @@ func TestCmd_RequiresArg(t *testing.T) {
 
 func TestCmd_InvalidOutputFormat(t *testing.T) {
 	cmd := Cmd()
+
+	var outputFormat outputformat.OutputFormat
+	outputformat.AddPersistentFlag(cmd, &outputFormat)
+
 	cmd.PreRunE = nil
 	cmd.SetArgs([]string{"art-abc-123", "--output-format", "yaml"})
 

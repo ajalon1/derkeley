@@ -24,6 +24,7 @@ import (
 
 	"github.com/datarobot/cli/internal/config/viperx"
 	"github.com/datarobot/cli/internal/drapi"
+	"github.com/datarobot/cli/internal/outputformat"
 	"github.com/datarobot/cli/internal/workload"
 	"github.com/datarobot/cli/internal/workload/wapi"
 	"github.com/spf13/cobra"
@@ -45,6 +46,10 @@ func newTestCmd(t *testing.T, dir string, yes bool, args []string) *cobra.Comman
 	t.Helper()
 
 	cmd := Cmd()
+
+	var outputFormat outputformat.OutputFormat
+	outputformat.AddPersistentFlag(cmd, &outputFormat)
+
 	cmd.PreRunE = nil
 
 	cmd.SetArgs(args)
@@ -242,7 +247,7 @@ func TestRunE_ExistingCodeArtifact_JSONOutput(t *testing.T) {
 	})
 
 	cmd := newTestCmd(t, tmp, true, []string{"art-abc-123"})
-	require.NoError(t, cmd.Flags().Set("output-format", "json"))
+	require.NoError(t, cmd.PersistentFlags().Set("output-format", "json"))
 
 	out := captureStdout(t, func() {
 		require.NoError(t, cmd.Execute())
@@ -267,7 +272,7 @@ func TestRunE_EmptyArtifact_JSONOutput(t *testing.T) {
 	})
 
 	cmd := newTestCmd(t, tmp, true, []string{"art-empty-001"})
-	require.NoError(t, cmd.Flags().Set("output-format", "json"))
+	require.NoError(t, cmd.PersistentFlags().Set("output-format", "json"))
 
 	out := captureStdout(t, func() {
 		require.NoError(t, cmd.Execute())

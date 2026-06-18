@@ -18,6 +18,7 @@ import (
 	"io"
 	"testing"
 
+	"github.com/datarobot/cli/internal/outputformat"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -109,6 +110,10 @@ func TestBuildUpdateBody_RejectsZeroVersion(t *testing.T) {
 
 func TestCmd_RejectsInvalidOutput(t *testing.T) {
 	cmd := Cmd()
+
+	var outputFormat outputformat.OutputFormat
+	outputformat.AddPersistentFlag(cmd, &outputFormat)
+
 	cmd.SetArgs([]string{"sched-id", "--pipeline=p", "--version=2", "--cron=0 0 * * *", "--output-format=yaml"})
 	cmd.SetOut(io.Discard)
 	cmd.SetErr(io.Discard)

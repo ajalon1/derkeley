@@ -111,6 +111,10 @@ func TestPrintListHuman_NoLatestVersion(t *testing.T) {
 
 func TestCmd_RejectsInvalidOutput(t *testing.T) {
 	cmd := Cmd()
+
+	var outputFormat outputformat.OutputFormat
+	outputformat.AddPersistentFlag(cmd, &outputFormat)
+
 	cmd.SetArgs([]string{"--output-format", "yaml"})
 	cmd.SetOut(io.Discard)
 	cmd.SetErr(io.Discard)
@@ -136,7 +140,7 @@ func TestCmd_RejectsInvalidMode(t *testing.T) {
 func TestCmd_HasExpectedFlags(t *testing.T) {
 	cmd := Cmd()
 
-	for _, name := range []string{"mode", "offset", "limit", "output-format"} {
+	for _, name := range []string{"mode", "offset", "limit"} {
 		flag := cmd.Flags().Lookup(name)
 		assert.NotNilf(t, flag, "expected --%s flag to be registered", name)
 	}

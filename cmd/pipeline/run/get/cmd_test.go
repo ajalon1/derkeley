@@ -18,6 +18,7 @@ import (
 	"io"
 	"testing"
 
+	"github.com/datarobot/cli/internal/outputformat"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -26,6 +27,10 @@ func runCmd(t *testing.T, args ...string) error {
 	t.Helper()
 
 	cmd := Cmd()
+
+	var outputFormat outputformat.OutputFormat
+	outputformat.AddPersistentFlag(cmd, &outputFormat)
+
 	cmd.SetArgs(args)
 	cmd.SetOut(io.Discard)
 	cmd.SetErr(io.Discard)
