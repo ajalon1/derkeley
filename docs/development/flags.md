@@ -70,16 +70,14 @@ func Cmd() *cobra.Command {
         },
     }
 
-    outputformat.AddFlag(cmd, &outputFormat)
-
     return cmd
 }
 ```
 
 Why `GetFormat(cmd)` instead of reading the variable directly:
 
-- it correctly handles local flag usage (`dr <cmd> --output-format json`)
-- it correctly handles inherited root usage (`dr --output-format json <cmd>`)
+- it correctly handles CLI flag usage (`dr --output-format json <cmd>`)
+- it correctly handles env-var usage (`DATAROBOT_CLI_OUTPUT_FORMAT=json`)
 - it keeps telemetry extraction consistent in command closures
 
 ## Mark flag groups
