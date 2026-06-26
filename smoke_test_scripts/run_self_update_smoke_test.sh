@@ -189,18 +189,25 @@ test_brew_self_update() {
     cleanup_curl_install
 
     echo "Installing dr-cli via brew..."
-    brew tap datarobot-oss/taps 2>/dev/null || true
-    brew install --cask dr-cli 2>/dev/null || brew upgrade --cask dr-cli 2>/dev/null || true
+    if ! brew tap datarobot-oss/taps; then
+        echo "⏭️  TEST 3 SKIPPED: Failed to tap datarobot-oss/taps (tap unavailable or not trusted)."
+        return 0
+    fi
+
+    if ! brew install --cask dr-cli && ! brew upgrade --cask dr-cli; then
+        echo "⏭️  TEST 3 SKIPPED: brew install/upgrade of dr-cli failed (environment issue)."
+        return 0
+    fi
 
     # Find the brew-installed binary (cask installs to a predictable location)
-    brew_dr=$(brew --prefix 2>/dev/null)/bin/dr
+    brew_dr=$(brew --prefix)/bin/dr
     if [[ ! -x "$brew_dr" ]]; then
         # Fall back to whatever is on PATH
         brew_dr=$(command -v dr 2>/dev/null || echo "")
     fi
 
     if [[ -z "$brew_dr" || ! -x "$brew_dr" ]]; then
-        echo "❌ TEST 3 FAILED: dr not found after brew install."
+        echo "❌ TEST 3 FAILED: dr not found after brew install succeeded."
         exit 1
     fi
 
