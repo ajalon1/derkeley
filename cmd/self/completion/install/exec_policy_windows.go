@@ -3,10 +3,12 @@
 package install
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 const policyWarning = `  ⚠  PowerShell execution policy is set to %s.
@@ -17,15 +19,18 @@ const policyWarning = `  ⚠  PowerShell execution policy is set to %s.
        Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
 `
 
-func warnIfExecutionPolicyRestricted() {
-	out, err := exec.Command("powershell", "-Command", "Get-ExecutionPolicy -Scope CurrentUser").Output()
+func warnIfExecutionPolicyRestricted(shellExe string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	out, err := exec.CommandContext(ctx, shellExe, "-Command", "Get-ExecutionPolicy").Output()
 	if err != nil {
 		return
 	}
 
 	policy := strings.TrimSpace(string(out))
 
-	if policy == "Restricted" || policy == "Undefined" {
+	if policy == "Restricted" {
 		fmt.Fprintf(os.Stderr, policyWarning, policy)
 	}
 }

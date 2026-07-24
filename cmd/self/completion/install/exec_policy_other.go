@@ -2,4 +2,4 @@
 
 package install
 
-func warnIfExecutionPolicyRestricted() {}
+func warnIfExecutionPolicyRestricted(_ string) {}
