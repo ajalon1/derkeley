@@ -32,18 +32,41 @@ const (
 	CheckIDDivergence = "wapi.config-manifest-divergence"
 	CheckIDRollback   = "wapi.rollback"
 	CheckIDLock       = "wapi.lock"
+
+	// M4 extra checks — appended after the remote block in the pinned order.
+	CheckIDLegacyUnmigrated = "wapi.legacy-unmigrated"
+	CheckIDDrignore         = "wapi.drignore"
+	CheckIDHistory          = "wapi.history"
 )
 
 // Checks returns the complete doctor check suite in the pinned fixed order:
-// the six local checks followed by the four remote checks (ten total in
-// ticket scope; any future extras append after). The remote checks share one
-// artifact snapshot fetched through store.
+// the six local checks, the four remote checks, then the M4 extra checks
+// appended after the remote block. The remote checks share one artifact
+// snapshot fetched through store.
 //
 // Each check resolves projectDir independently at Run time, so the returned
 // checks stay correct even if the directory's state changes between
 // construction and execution.
 func Checks(projectDir string, store ArtifactGetter) []core.Check {
-	return append(LocalChecks(projectDir), RemoteChecks(projectDir, store)...)
+	checks := append(LocalChecks(projectDir), RemoteChecks(projectDir, store)...)
+
+	return append(checks, ExtraChecks(projectDir, store)...)
+}
+
+// ExtraChecks returns the M4 extra checks appended after the remote block in
+// the pinned fixed order: legacy-unmigrated, drignore, history. The
+// remote.no-coderef and wapi.checkouts-orphaned checks are added by the
+// doctor-extra-remote-info-checks feature.
+//
+// Each check resolves projectDir independently at Run time, so the returned
+// checks stay correct even if the directory's state changes between
+// construction and execution.
+func ExtraChecks(projectDir string, _ ArtifactGetter) []core.Check {
+	return []core.Check{
+		&legacyUnmigratedCheck{projectDir: projectDir},
+		&drignoreCheck{projectDir: projectDir},
+		&historyCheck{projectDir: projectDir},
+	}
 }
 
 // LocalChecks returns the six local sync-state checks in the fixed report

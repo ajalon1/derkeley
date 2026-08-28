@@ -26,6 +26,7 @@ import (
 
 	core "github.com/datarobot/cli/internal/doctor"
 	"github.com/datarobot/cli/internal/fsutil"
+	"github.com/datarobot/cli/internal/workload/ignore"
 	"github.com/datarobot/cli/internal/workload/sync"
 	"github.com/datarobot/cli/internal/workload/wapi"
 )
@@ -81,13 +82,15 @@ func runFixWithGoos(ctx context.Context, projectDir, goos string) []core.Action 
 		fixManifest(projectDir),
 		fixRollback(projectDir),
 		fixLock(projectDir),
+		fixLegacyMigration(projectDir),
+		fixDrignore(projectDir),
 	}
 }
 
 // skipAllRepairs reports every repair as skipped with the given reason while
 // the global safety gate blocks the run.
 func skipAllRepairs(reason string) []core.Action {
-	ids := []string{CheckIDManifest, CheckIDRollback, CheckIDLock}
+	ids := []string{CheckIDManifest, CheckIDRollback, CheckIDLock, CheckIDLegacyUnmigrated, CheckIDDrignore}
 
 	actions := make([]core.Action, 0, len(ids))
 
@@ -263,5 +266,72 @@ func fixLock(projectDir string) core.Action {
 		ID:     CheckIDLock,
 		Status: core.ActionNotNeeded,
 		Reason: "verified acquirable (acquired and released); no holder detected",
+	}
+}
+
+// fixLegacyMigration moves a legacy .wapi/ state directory to the canonical
+// .datarobot/workload/ location via wapi.EnsureMigrated. The move preserves
+// all contents (it is an os.Rename). When the state is already at the current
+// location or there is no legacy directory, the repair is not-needed. On an
+// unlinked project there is nothing to migrate.
+func fixLegacyMigration(projectDir string) core.Action {
+	if !wapi.Exists(projectDir) {
+		return core.Action{ID: CheckIDLegacyUnmigrated, Status: core.ActionNotNeeded}
+	}
+
+	legacy := filepath.Join(projectDir, wapi.LegacyDirName)
+	current := filepath.Join(projectDir, wapi.RootDirName, wapi.StateDirName)
+
+	if !fsutil.DirExists(legacy) || fsutil.DirExists(current) {
+		return core.Action{ID: CheckIDLegacyUnmigrated, Status: core.ActionNotNeeded}
+	}
+
+	notice := wapi.EnsureMigrated(projectDir)
+
+	// EnsureMigrated renames legacy → current on success. Verify the move
+	// landed: current exists and legacy is gone.
+	if fsutil.DirExists(current) && !fsutil.DirExists(legacy) {
+		return core.Action{
+			ID:     CheckIDLegacyUnmigrated,
+			Status: core.ActionPerformed,
+			Reason: notice,
+		}
+	}
+
+	return core.Action{
+		ID:     CheckIDLegacyUnmigrated,
+		Status: core.ActionSkipped,
+		Reason: "could not migrate legacy state: " + notice,
+	}
+}
+
+// fixDrignore reseeds .drignore from the standard embedded template when no
+// ignore file exists at the project root. It NEVER overwrites an existing
+// file (ignore.Locate returns non-empty for .drignore or .wapiignore): an
+// existing file — even a user-modified one — is left byte-identical and the
+// repair reports not-needed. On an unlinked project there is nothing to reseed.
+func fixDrignore(projectDir string) core.Action {
+	if !wapi.Exists(projectDir) {
+		return core.Action{ID: CheckIDDrignore, Status: core.ActionNotNeeded}
+	}
+
+	if ignore.Locate(projectDir) != "" {
+		return core.Action{ID: CheckIDDrignore, Status: core.ActionNotNeeded}
+	}
+
+	path := filepath.Join(projectDir, ignore.FileName)
+
+	if err := fsutil.AtomicWriteFile(path, wapi.IgnoreTemplate()); err != nil {
+		return core.Action{
+			ID:     CheckIDDrignore,
+			Status: core.ActionSkipped,
+			Reason: fmt.Sprintf("write %s: %v", path, err),
+		}
+	}
+
+	return core.Action{
+		ID:     CheckIDDrignore,
+		Status: core.ActionPerformed,
+		Reason: "reseeded .drignore from the standard template",
 	}
 }

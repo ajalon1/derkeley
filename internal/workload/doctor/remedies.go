@@ -71,4 +71,19 @@ const (
 	// 5xx, timeout, unreachable endpoint). It deliberately never mentions
 	// --relink: a fetch failure is not evidence that the artifact is gone.
 	RemedyRemoteConnectivity = "run 'dr auth login' or fix network connectivity, then re-run this command"
+
+	// RemedyLegacyUnmigrated is shown when a legacy .wapi/ state directory
+	// exists but the current .datarobot/workload/ does not: --fix migrates
+	// the state in place, preserving all contents.
+	RemedyLegacyUnmigrated = "dr artifact code doctor --fix (migrates .wapi/ to .datarobot/workload/ preserving contents)"
+
+	// RemedyDrignore is shown when no ignore file is found at the project
+	// root (.drignore or legacy .wapiignore): --fix reseeds .drignore from
+	// the standard template. An existing file is never overwritten.
+	RemedyDrignore = "dr artifact code doctor --fix (reseeds .drignore from the standard template)"
+
+	// RemedyHistory is shown when history.log contains unparseable JSONL
+	// lines (crash truncation). It is informational only: the doctor never
+	// writes history.log, so the user must review and fix it manually.
+	RemedyHistory = "review history.log and manually fix unparseable lines (doctor does not auto-repair history)"
 )

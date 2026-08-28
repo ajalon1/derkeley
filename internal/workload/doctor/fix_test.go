@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	core "github.com/datarobot/cli/internal/doctor"
+	"github.com/datarobot/cli/internal/workload/ignore"
 	"github.com/datarobot/cli/internal/workload/wapi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -41,15 +42,17 @@ func actionByID(t *testing.T, actions []core.Action) map[string]core.Action {
 }
 
 // requireActionsInOrder asserts the pinned action order: manifest rebuild,
-// rollback clear, lock clear.
+// rollback clear, lock clear, legacy migration, drignore reseed.
 func requireActionsInOrder(t *testing.T, actions []core.Action) {
 	t.Helper()
 
-	require.Len(t, actions, 3)
+	require.Len(t, actions, 5)
 
 	require.Equal(t, CheckIDManifest, actions[0].ID)
 	require.Equal(t, CheckIDRollback, actions[1].ID)
 	require.Equal(t, CheckIDLock, actions[2].ID)
+	require.Equal(t, CheckIDLegacyUnmigrated, actions[3].ID)
+	require.Equal(t, CheckIDDrignore, actions[4].ID)
 }
 
 // TestRunFix_HealthyProject_AllNotNeeded covers VAL-FIX-001/VAL-FIX-012: on a
@@ -62,6 +65,12 @@ func TestRunFix_HealthyProject_AllNotNeeded(t *testing.T) {
 
 	require.NoError(t, wapi.SaveConfig(dir, validConfig("", "")))
 	require.NoError(t, wapi.SaveManifest(dir, validManifest("")))
+
+	// A healthy project has an ignore file at the root so the drignore fix
+	// reports not-needed rather than reseeding.
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, ignore.FileName), wapi.IgnoreTemplate(), 0o644,
+	))
 
 	before := stateFileHashes(t, dir)
 

@@ -101,14 +101,16 @@ func TestRunE_FixMissingManifest_PostFixOK_ExitZero(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(outStr), &report), "stdout must be a single pure-JSON object")
 
 	assert.Equal(t, "ok", report.Status, "post-fix state is healthy")
-	assert.Equal(t, 10, report.Summary.OK)
+	assert.Equal(t, 13, report.Summary.OK)
 
-	require.Len(t, report.Actions, 3)
+	require.Len(t, report.Actions, 5)
 
 	assert.Equal(t, "wapi.manifest", report.Actions[0].ID)
 	assert.Equal(t, "performed", report.Actions[0].Status)
 	assert.Equal(t, "wapi.rollback", report.Actions[1].ID)
 	assert.Equal(t, "wapi.lock", report.Actions[2].ID)
+	assert.Equal(t, "wapi.legacy-unmigrated", report.Actions[3].ID)
+	assert.Equal(t, "wapi.drignore", report.Actions[4].ID)
 
 	for _, check := range report.Checks {
 		assert.Equal(t, "OK", check.Status, "post-fix check %s", check.ID)
@@ -187,7 +189,7 @@ func TestRunE_FixHeldLock_AllSkipped_ExitOne(t *testing.T) {
 
 	require.NoError(t, json.Unmarshal(out.Bytes(), &report))
 
-	require.Len(t, report.Actions, 3)
+	require.Len(t, report.Actions, 5)
 
 	for _, action := range report.Actions {
 		assert.Equal(t, "skipped", action.Status, "action %s", action.ID)

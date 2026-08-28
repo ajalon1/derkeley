@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	core "github.com/datarobot/cli/internal/doctor"
+	"github.com/datarobot/cli/internal/workload/ignore"
 	"github.com/datarobot/cli/internal/workload/sync"
 	"github.com/datarobot/cli/internal/workload/wapi"
 	"github.com/stretchr/testify/assert"
@@ -28,7 +29,8 @@ import (
 )
 
 // healthyProject writes a fully healthy local state: valid config with both
-// pointers, valid manifest agreeing with it, no rollback tree, no lock file.
+// pointers, valid manifest agreeing with it, no rollback tree, no lock file,
+// and a .drignore at the project root so the drignore check reports OK.
 func healthyProject(t *testing.T) string {
 	t.Helper()
 
@@ -39,6 +41,9 @@ func healthyProject(t *testing.T) string {
 	require.NoError(t, wapi.SaveConfig(dir, validConfig(testCatalogID, testVersionID)))
 
 	require.NoError(t, wapi.SaveManifest(dir, validManifest(testVersionID)))
+
+	// A healthy project has an ignore file at the root.
+	require.NoError(t, os.WriteFile(filepath.Join(dir, ignore.FileName), wapi.IgnoreTemplate(), 0o644))
 
 	return dir
 }

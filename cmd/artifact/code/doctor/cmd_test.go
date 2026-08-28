@@ -75,7 +75,8 @@ type jsonReport struct {
 }
 
 // pinnedCheckOrder is the fixed check order the command must preserve:
-// six local checks then the four remote checks (ten total).
+// six local checks, four remote checks, then the M4 extra checks (thirteen
+// total on the extras branch).
 var pinnedCheckOrder = []string{
 	"wapi.presence",
 	"wapi.config",
@@ -87,6 +88,9 @@ var pinnedCheckOrder = []string{
 	"remote.artifact-locked",
 	"remote.catalog-mismatch",
 	"remote.drift",
+	"wapi.legacy-unmigrated",
+	"wapi.drignore",
+	"wapi.history",
 }
 
 // withFakeArtifact swaps the command's remote artifact seam for fn, restoring
@@ -175,6 +179,12 @@ func linkHealthyProject(t *testing.T, projectDir string) {
 
 	writeStateFile(t, projectDir, "manifest.json",
 		`{"version":1,"syncedAt":null,"syncedVersionId":null,"files":{"app/main.go":{"hash":"`+testHash+`","size":3}}}`)
+
+	// A healthy project has an ignore file at the root so the drignore check
+	// reports OK.
+	require.NoError(t, os.WriteFile(
+		filepath.Join(projectDir, ".drignore"), wapi.IgnoreTemplate(), 0o644,
+	))
 }
 
 // stateFileHashes maps every file under projectDir to its SHA-256 hex digest,
@@ -272,7 +282,7 @@ func TestRunE_HealthyProject_TextReport_ExitZero(t *testing.T) {
 		assert.Contains(t, outStr, id, "renders check row %s", id)
 	}
 
-	assert.Contains(t, outStr, "Summary: 10 ok, 0 warn, 0 fail, 0 skip — verdict: ok")
+	assert.Contains(t, outStr, "Summary: 13 ok, 0 warn, 0 fail, 0 skip — verdict: ok")
 }
 
 func TestRunE_UnlinkedProject_RendersReport_ExitsOneSilently(t *testing.T) {
@@ -321,7 +331,7 @@ func TestRunE_HealthyProject_JSONReport(t *testing.T) {
 	}
 
 	assert.Equal(t, pinnedCheckOrder, gotOrder)
-	assert.Equal(t, jsonSummary{OK: 10}, report.Summary)
+	assert.Equal(t, jsonSummary{OK: 13}, report.Summary)
 }
 
 func TestRunE_JSONOutput_CorruptConfig_FailWithPath(t *testing.T) {
@@ -606,7 +616,7 @@ func TestRunE_RemoteNon404_AllSkipWithConnectivityRemedy_ExitZero(t *testing.T) 
 				}
 			}
 
-			assert.Equal(t, jsonSummary{OK: 6, SKIP: 4}, report.Summary)
+			assert.Equal(t, jsonSummary{OK: 9, SKIP: 4}, report.Summary)
 
 			assert.Equal(t, "ok", report.Status, "SKIP-only remote outcome keeps verdict ok")
 

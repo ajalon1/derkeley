@@ -21,3 +21,10 @@ import _ "embed"
 //
 //go:embed drignore.tmpl
 var ignoreTemplate []byte
+
+// IgnoreTemplate returns the starter ignore-file content used by Initialize
+// and `doctor --fix` reseed. It is the embedded template verbatim, including
+// the trailing newline, so the reseeded file is byte-identical to a fresh init.
+func IgnoreTemplate() []byte {
+	return ignoreTemplate
+}
