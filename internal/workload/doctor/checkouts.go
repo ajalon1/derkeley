@@ -30,7 +30,10 @@ import (
 // orphaned version snapshots from `dr artifact code checkout`. The check is
 // informational: it reports the snapshot-dir count and total disk usage, and
 // is not fixable (the doctor never deletes .checkouts/ snapshots). An absent
-// .checkouts/ directory is OK (the healthy steady state).
+// .checkouts/ directory is OK (the healthy steady state); an unreadable one
+// SKIPs, because unverifiable state is never reported as healthy or as
+// orphaned — the same posture the remote checks take toward an unreachable
+// API.
 type checkoutsOrphanedCheck struct {
 	projectDir string
 }
@@ -45,7 +48,9 @@ func (c *checkoutsOrphanedCheck) Name() string {
 
 // Run reads the .checkouts/ directory and counts snapshot subdirectories. A
 // missing directory is OK. Zero snapshots is OK. One or more snapshots is a
-// WARN with the count and total disk usage. The directory is never modified.
+// WARN with the count and total disk usage. A directory that exists but
+// cannot be read SKIPs with a "could not read" summary (VAL-EXTRA-014). The
+// directory is never modified.
 func (c *checkoutsOrphanedCheck) Run(_ context.Context) core.Result {
 	if res, skip := skipIfUnlinked(c.projectDir); skip {
 		return res
@@ -62,16 +67,30 @@ func (c *checkoutsOrphanedCheck) Run(_ context.Context) core.Result {
 			}
 		}
 
-		// An unreadable directory is not an orphaned-snapshots condition;
-		// report OK so a permission issue does not maslead the user into
-		// thinking snapshots are orphaned.
+		// A directory that exists but cannot be read is an unverifiable
+		// state, not a healthy one: OK would assert "nothing here" and WARN
+		// would assert "orphans", and both would be invented. SKIP with a
+		// could-not-read summary keeps the report honest (never a misleading
+		// OK for unverifiable state), consistent with how the remote checks
+		// treat an unreachable API; it must not mislead the user into
+		// thinking snapshots are orphaned either way.
 		return core.Result{
-			Status:  core.StatusOK,
-			Summary: "cannot read .checkouts/ directory (permission issue?)",
+			Status:  core.StatusSKIP,
+			Summary: "could not read .checkouts/ directory",
+			Remedy:  RemedyCheckoutsUnreadable,
+			Fixable: false,
 		}
 	}
 
 	// Count snapshot subdirectories (version snapshots are dirs).
+	//
+	// Name-shape validation is deliberately not applied (wontfix): the
+	// directory is CLI-owned and the checkout command itself treats every
+	// non-dot directory under it as a checkout name (listCheckoutNames), so
+	// counting every subdirectory stays consistent with the command that
+	// owns the directory. Pinning a hex version-id shape here would embed an
+	// assumption nothing in the codebase validates, and a shape drift would
+	// silently undercount this informational row.
 	var count int
 
 	for _, entry := range entries {

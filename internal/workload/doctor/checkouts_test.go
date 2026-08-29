@@ -18,6 +18,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	core "github.com/datarobot/cli/internal/doctor"
@@ -108,6 +109,100 @@ func TestCheckoutsOrphaned_Unlinked_SKIP(t *testing.T) {
 
 	assert.Equal(t, core.StatusSKIP, result.Status)
 	assert.Contains(t, result.Summary, "no linked state")
+}
+
+// --- VAL-EXTRA-014: unreadable .checkouts/ → SKIP, never misleading OK ---
+
+func TestCheckoutsOrphaned_Unreadable_SKIP_PermissionDenied(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("unix permission semantics; chmod cannot make a directory unreadable on windows")
+	}
+
+	if os.Geteuid() == 0 {
+		t.Skip("root can read unreadable directories, so the SKIP path cannot be fabricated")
+	}
+
+	dir := linkedWithoutDrignore(t)
+
+	checkoutsDir := wapi.CheckoutsDir(dir)
+
+	// A snapshot dir exists but the parent is unreadable: the snapshot
+	// presence is unverifiable and must SKIP rather than report OK or WARN.
+	require.NoError(t, os.MkdirAll(filepath.Join(checkoutsDir, "v123"), 0o755))
+
+	require.NoError(t, os.Chmod(checkoutsDir, 0o000))
+
+	t.Cleanup(func() {
+		if chmodErr := os.Chmod(checkoutsDir, 0o755); chmodErr != nil {
+			t.Logf("restore .checkouts/ permissions: %v", chmodErr)
+		}
+	})
+
+	result := runCheckoutsCheck(t, dir)
+
+	assert.Equal(t, core.StatusSKIP, result.Status)
+	assert.Contains(t, result.Summary, "could not read .checkouts/")
+
+	// Neither an assumed-clean nor an orphaned-snapshots claim: both would
+	// be invented from an unreadable directory.
+	assert.NotContains(t, result.Summary, "snapshot")
+	assert.NotContains(t, result.Summary, "no .checkouts")
+
+	assert.Equal(t, RemedyCheckoutsUnreadable, result.Remedy)
+	assert.False(t, result.Fixable)
+
+	// Read-only: restore access first (Stat cannot traverse a 0o000 parent),
+	// then verify the snapshot survived the diagnosis untouched.
+	require.NoError(t, os.Chmod(checkoutsDir, 0o755))
+
+	assert.True(t, dirExists(filepath.Join(checkoutsDir, "v123")))
+}
+
+func TestCheckoutsOrphaned_Unreadable_ReportUnaffected_Exit0(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("unix permission semantics; chmod cannot make a directory unreadable on windows")
+	}
+
+	if os.Geteuid() == 0 {
+		t.Skip("root can read unreadable directories, so the SKIP path cannot be fabricated")
+	}
+
+	dir := linkedWithoutDrignore(t)
+
+	checkoutsDir := wapi.CheckoutsDir(dir)
+
+	require.NoError(t, os.MkdirAll(checkoutsDir, 0o755))
+
+	require.NoError(t, os.Chmod(checkoutsDir, 0o000))
+
+	t.Cleanup(func() {
+		if chmodErr := os.Chmod(checkoutsDir, 0o755); chmodErr != nil {
+			t.Logf("restore .checkouts/ permissions: %v", chmodErr)
+		}
+	})
+
+	results := runExtraChecks(t, dir)
+
+	require.Len(t, results, 5)
+
+	// The checkouts row SKIPs ...
+	last := results[4]
+	assert.Equal(t, CheckIDCheckoutsOrphaned, last.CheckID)
+	assert.Equal(t, core.StatusSKIP, last.Status)
+	assert.Contains(t, last.Summary, "could not read .checkouts/")
+
+	// ... while every other check keeps its verdict for this fixture
+	// (legacy current-location OK, drignore missing WARN, history absent OK,
+	// no-coderef SKIP via the nil store).
+	assert.Equal(t, core.StatusOK, results[0].Status)
+	assert.Equal(t, core.StatusWARN, results[1].Status)
+	assert.Equal(t, core.StatusOK, results[2].Status)
+	assert.Equal(t, core.StatusSKIP, results[3].Status)
+
+	// SKIP never fails the run.
+	report := core.NewReport(dir, nil, results)
+	assert.Equal(t, 0, report.ExitCode())
+	assert.Equal(t, "warn", report.OverallStatus())
 }
 
 // --- Read-only guarantee ---

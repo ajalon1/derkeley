@@ -87,6 +87,13 @@ const (
 	// writes history.log, so the user must review and fix it manually.
 	RemedyHistory = "review history.log and manually fix unparseable lines (doctor does not auto-repair history)"
 
+	// RemedyHistoryUnreadable is shown when history.log cannot be read at
+	// all (permission or I/O error). This is not an unparseable-lines
+	// condition — nothing can be parsed from a file that cannot be opened —
+	// so access must be restored first. The doctor never writes history.log,
+	// so making the file inspectable is on the user.
+	RemedyHistoryUnreadable = "check permissions and ownership on the state directory and history.log, then re-run this command"
+
 	// RemedyNoCodeRef is shown when the linked artifact exists but has no
 	// usable code reference (never synced from this project). It is distinct
 	// from drift: the artifact simply has no codeRef yet. Running a sync
@@ -98,4 +105,10 @@ const (
 	// .checkouts/ snapshots, so the user must review and remove them manually
 	// if no longer needed.
 	RemedyCheckoutsOrphaned = "review .checkouts/ snapshots and remove them manually if no longer needed (doctor does not auto-clean .checkouts/)"
+
+	// RemedyCheckoutsUnreadable is shown when .checkouts/ exists but cannot
+	// be read (permission or I/O error). Whether snapshots are present is
+	// unverifiable from here, so the check SKIPs rather than assuming the
+	// directory is healthy; access must be restored before it can run.
+	RemedyCheckoutsUnreadable = "check permissions and ownership on the state directory and .checkouts/, then re-run this command"
 )

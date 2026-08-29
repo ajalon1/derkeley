@@ -30,8 +30,10 @@ import (
 
 // historyCheck reports whether history.log contains unparseable JSONL lines
 // (crash truncation). A missing history.log is OK (append-only, lazily
-// created on first write). The check is informational and not fixable: the
-// doctor never writes history.log in read-only mode.
+// created on first write); an unreadable one WARNs with RemedyHistoryUnreadable
+// (nothing can be parsed from a file that cannot be opened, so the remedy is
+// about restoring access, not fixing lines). The check is informational and
+// not fixable: the doctor never writes history.log in read-only mode.
 type historyCheck struct {
 	projectDir string
 }
@@ -46,7 +48,10 @@ func (c *historyCheck) Name() string {
 
 // Run reads history.log line by line and attempts to parse each non-empty
 // line as a JSON object. Any unparseable line yields a WARN with fixable=false.
-// A missing file is OK (not an error). The file is never modified.
+// A file that cannot be read at all (permission or I/O error) WARNs with
+// RemedyHistoryUnreadable instead — the mismatched "fix unparseable lines"
+// remedy would tell a user who cannot even open the file to edit it. A missing
+// file is OK (not an error). The file is never modified.
 func (c *historyCheck) Run(_ context.Context) core.Result {
 	if res, skip := skipIfUnlinked(c.projectDir); skip {
 		return res
@@ -66,7 +71,7 @@ func (c *historyCheck) Run(_ context.Context) core.Result {
 		return core.Result{
 			Status:  core.StatusWARN,
 			Summary: fmt.Sprintf("cannot read history log (%s)", absPath(path)),
-			Remedy:  RemedyHistory,
+			Remedy:  RemedyHistoryUnreadable,
 			Fixable: false,
 		}
 	}

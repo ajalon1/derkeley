@@ -153,6 +153,39 @@ func TestFixDrignore_Unlinked_NotNeeded(t *testing.T) {
 	assert.Equal(t, core.ActionNotNeeded, byID[CheckIDDrignore].Status)
 }
 
+// --- seedIgnoreFileIfAbsent: the O_EXCL reseed primitive ---
+
+func TestSeedIgnoreFileIfAbsent_CreatesTemplateWhenAbsent(t *testing.T) {
+	path := filepath.Join(t.TempDir(), ignore.FileName)
+
+	created, err := seedIgnoreFileIfAbsent(path, wapi.IgnoreTemplate())
+
+	require.NoError(t, err)
+	assert.True(t, created)
+
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+	assert.Equal(t, wapi.IgnoreTemplate(), data,
+		"created file must carry the template byte-for-byte")
+}
+
+func TestSeedIgnoreFileIfAbsent_ExistingFileNeverClobbered(t *testing.T) {
+	path := filepath.Join(t.TempDir(), ignore.FileName)
+
+	existing := []byte("# user patterns\n*.secret\n")
+	require.NoError(t, os.WriteFile(path, existing, 0o644))
+
+	created, err := seedIgnoreFileIfAbsent(path, wapi.IgnoreTemplate())
+
+	require.NoError(t, err)
+	assert.False(t, created, "O_EXCL create must refuse to replace an existing file")
+
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+	assert.Equal(t, existing, data,
+		"the never-overwrite contract must hold even in the Locate→write window: O_EXCL claims or refuses atomically, so a file that appears in the window is never clobbered by a rename")
+}
+
 // --- --fix composition: only fixable extras repaired (VAL-EXTRA-013 partial) ---
 
 func TestRunFix_Extras_HistoryNotFixable_StaysWARN(t *testing.T) {

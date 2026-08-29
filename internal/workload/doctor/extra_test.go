@@ -265,6 +265,26 @@ func TestHistory_AllGarbage_WARN(t *testing.T) {
 	assert.False(t, results[2].Fixable)
 }
 
+func TestHistory_UnreadableLog_WARN_DistinctRemedy(t *testing.T) {
+	dir := linkedWithoutDrignore(t)
+
+	// A directory at history.log's path makes os.ReadFile fail with a
+	// non-NotExist error (EISDIR), exercising the unreadable branch without
+	// needing permission games that root would bypass.
+	require.NoError(t, os.MkdirAll(filepath.Join(wapi.Dir(dir), wapi.HistoryFile), 0o755))
+
+	results := runExtraChecks(t, dir)
+
+	assert.Equal(t, core.StatusWARN, results[2].Status)
+	assert.Contains(t, results[2].Summary, "cannot read history log")
+
+	// An unreadable file cannot have unparseable lines: the remedy must be
+	// the inspect-the-file one, never the fix-unparseable-lines one.
+	assert.Equal(t, RemedyHistoryUnreadable, results[2].Remedy)
+	assert.NotEqual(t, RemedyHistory, results[2].Remedy)
+	assert.False(t, results[2].Fixable)
+}
+
 func TestHistory_EmptyFile_OK(t *testing.T) {
 	dir := linkedWithoutDrignore(t)
 

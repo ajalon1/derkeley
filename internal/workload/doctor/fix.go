@@ -307,9 +307,12 @@ func fixLegacyMigration(projectDir string) core.Action {
 
 // fixDrignore reseeds .drignore from the standard embedded template when no
 // ignore file exists at the project root. It NEVER overwrites an existing
-// file (ignore.Locate returns non-empty for .drignore or .wapiignore): an
-// existing file — even a user-modified one — is left byte-identical and the
-// repair reports not-needed. On an unlinked project there is nothing to reseed.
+// file: presence is checked with ignore.Locate (.drignore or .wapiignore),
+// and the reseed itself creates with O_EXCL, so the never-overwrite contract
+// holds even when a file appears between that check and the write — a
+// rename-in-place write (AtomicWriteFile) would clobber it. An existing file
+// — even a user-modified one — is left byte-identical and the repair reports
+// not-needed. On an unlinked project there is nothing to reseed.
 func fixDrignore(projectDir string) core.Action {
 	if !wapi.Exists(projectDir) {
 		return core.Action{ID: CheckIDDrignore, Status: core.ActionNotNeeded}
@@ -321,11 +324,22 @@ func fixDrignore(projectDir string) core.Action {
 
 	path := filepath.Join(projectDir, ignore.FileName)
 
-	if err := fsutil.AtomicWriteFile(path, wapi.IgnoreTemplate()); err != nil {
+	created, err := seedIgnoreFileIfAbsent(path, wapi.IgnoreTemplate())
+	if err != nil {
 		return core.Action{
 			ID:     CheckIDDrignore,
 			Status: core.ActionSkipped,
 			Reason: fmt.Sprintf("write %s: %v", path, err),
+		}
+	}
+
+	if !created {
+		// The file appeared between the Locate probe and the create; it
+		// exists now and must stay untouched.
+		return core.Action{
+			ID:     CheckIDDrignore,
+			Status: core.ActionNotNeeded,
+			Reason: "ignore file exists; left untouched",
 		}
 	}
 
@@ -334,4 +348,51 @@ func fixDrignore(projectDir string) core.Action {
 		Status: core.ActionPerformed,
 		Reason: "reseeded .drignore from the standard template",
 	}
+}
+
+// seedIgnoreFileIfAbsent creates path with data iff it does not exist,
+// atomically: O_CREATE|O_EXCL checks absence and claims the name in a single
+// syscall, closing the check-then-write window a rename-based write has
+// (os.Rename always replaces its target, so AtomicWriteFile would clobber a
+// file created after its caller's presence check — the M4 scrutiny TOCTOU).
+// The kernel applies the process umask to the create mode on every platform,
+// so a new file ends up exactly as wide as a plain create would leave it.
+//
+// Durability matches the atomic write in the ways that matter: the data is
+// fsynced before close, and on any write failure the partial file is removed
+// so a failed reseed never leaves a half-written ignore file behind. The one
+// residual window — SIGKILL mid-write — is accepted: the template is a
+// single small buffer, and a kill can interrupt the rename-based write
+// equally.
+//
+// It reports created=false with a nil error when the file already exists.
+func seedIgnoreFileIfAbsent(path string, data []byte) (created bool, err error) {
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, fsutil.DefaultFileMode)
+	if err != nil {
+		if errors.Is(err, os.ErrExist) {
+			return false, nil
+		}
+
+		return false, fmt.Errorf("create %s: %w", path, err)
+	}
+
+	defer func() {
+		if err != nil {
+			_ = os.Remove(path)
+		}
+	}()
+
+	if _, err = f.Write(data); err != nil {
+		return false, fmt.Errorf("write %s: %w", path, err)
+	}
+
+	if err = f.Sync(); err != nil {
+		return false, fmt.Errorf("sync %s: %w", path, err)
+	}
+
+	if err = f.Close(); err != nil {
+		return false, fmt.Errorf("close %s: %w", path, err)
+	}
+
+	return true, nil
 }
