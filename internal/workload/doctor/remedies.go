@@ -86,4 +86,16 @@ const (
 	// lines (crash truncation). It is informational only: the doctor never
 	// writes history.log, so the user must review and fix it manually.
 	RemedyHistory = "review history.log and manually fix unparseable lines (doctor does not auto-repair history)"
+
+	// RemedyNoCodeRef is shown when the linked artifact exists but has no
+	// usable code reference (never synced from this project). It is distinct
+	// from drift: the artifact simply has no codeRef yet. Running a sync
+	// establishes it and clears the WARN.
+	RemedyNoCodeRef = "run 'dr artifact code sync' to establish the code reference (the artifact has never been synced from this project)"
+
+	// RemedyCheckoutsOrphaned is shown when .checkouts/ snapshot directories
+	// are present. It is informational only: the doctor never deletes
+	// .checkouts/ snapshots, so the user must review and remove them manually
+	// if no longer needed.
+	RemedyCheckoutsOrphaned = "review .checkouts/ snapshots and remove them manually if no longer needed (doctor does not auto-clean .checkouts/)"
 )

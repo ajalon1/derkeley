@@ -69,8 +69,13 @@ func ProductionArtifactGetter() ArtifactGetter {
 // checks), so the SKIP cascades (unlinked project, unreadable config) are
 // honest per-run observations rather than construction-time snapshots.
 func RemoteChecks(projectDir string, store ArtifactGetter) []core.Check {
-	snapshot := &remoteSnapshot{store: store}
+	return remoteChecksWithSnapshot(projectDir, &remoteSnapshot{store: store})
+}
 
+// remoteChecksWithSnapshot is RemoteChecks with a pre-created snapshot, so
+// the full Checks suite can share one snapshot across the ticket-scope
+// remote checks and the remote.no-coderef extra (one fetch per run).
+func remoteChecksWithSnapshot(projectDir string, snapshot *remoteSnapshot) []core.Check {
 	return []core.Check{
 		&artifactExistsCheck{remoteBase{projectDir: projectDir, snapshot: snapshot}},
 		&artifactLockedCheck{remoteBase{projectDir: projectDir, snapshot: snapshot}},
@@ -95,9 +100,17 @@ type remoteSnapshot struct {
 
 // get returns the shared snapshot, fetching it on first use with the given
 // artifact id. Subsequent calls (whatever id they pass) return the memoized
-// result: within one run the config cannot legitimately change identity.
+// result: within one run the config cannot legitimately change identity. A
+// nil store (local-only test runs) yields an error so the dependent checks
+// SKIP rather than panicking.
 func (s *remoteSnapshot) get(artifactID string) (*workload.Artifact, error) {
 	s.once.Do(func() {
+		if s.store == nil {
+			s.err = errors.New("no artifact store configured")
+
+			return
+		}
+
 		s.artifact, s.err = s.store.Get(artifactID)
 	})
 

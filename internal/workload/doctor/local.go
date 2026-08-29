@@ -34,38 +34,53 @@ const (
 	CheckIDLock       = "wapi.lock"
 
 	// M4 extra checks — appended after the remote block in the pinned order.
-	CheckIDLegacyUnmigrated = "wapi.legacy-unmigrated"
-	CheckIDDrignore         = "wapi.drignore"
-	CheckIDHistory          = "wapi.history"
+	CheckIDLegacyUnmigrated  = "wapi.legacy-unmigrated"
+	CheckIDDrignore          = "wapi.drignore"
+	CheckIDHistory           = "wapi.history"
+	CheckIDNoCodeRef         = "remote.no-coderef"
+	CheckIDCheckoutsOrphaned = "wapi.checkouts-orphaned"
 )
 
 // Checks returns the complete doctor check suite in the pinned fixed order:
-// the six local checks, the four remote checks, then the M4 extra checks
-// appended after the remote block. The remote checks share one artifact
-// snapshot fetched through store.
+// the six local checks, the four remote checks, then the five M4 extra
+// checks appended after the remote block. The remote checks and the
+// remote.no-coderef extra share one artifact snapshot fetched through store
+// (exactly one GetArtifact per run).
 //
 // Each check resolves projectDir independently at Run time, so the returned
 // checks stay correct even if the directory's state changes between
 // construction and execution.
 func Checks(projectDir string, store ArtifactGetter) []core.Check {
-	checks := append(LocalChecks(projectDir), RemoteChecks(projectDir, store)...)
+	snapshot := &remoteSnapshot{store: store}
 
-	return append(checks, ExtraChecks(projectDir, store)...)
+	checks := append(LocalChecks(projectDir), remoteChecksWithSnapshot(projectDir, snapshot)...)
+
+	return append(checks, ExtraChecks(projectDir, snapshot)...)
 }
 
-// ExtraChecks returns the M4 extra checks appended after the remote block in
-// the pinned fixed order: legacy-unmigrated, drignore, history. The
-// remote.no-coderef and wapi.checkouts-orphaned checks are added by the
-// doctor-extra-remote-info-checks feature.
+// ExtraChecks returns the five M4 extra checks appended after the remote
+// block in the pinned fixed order: legacy-unmigrated, drignore, history,
+// remote.no-coderef, wapi.checkouts-orphaned. The remote.no-coderef check
+// shares the same artifact snapshot as the ticket-scope remote checks (one
+// fetch per run); pass nil when no remote checks are needed (local-only test
+// runs — the no-coderef check will SKIP).
 //
 // Each check resolves projectDir independently at Run time, so the returned
 // checks stay correct even if the directory's state changes between
 // construction and execution.
-func ExtraChecks(projectDir string, _ ArtifactGetter) []core.Check {
+func ExtraChecks(projectDir string, snapshot *remoteSnapshot) []core.Check {
+	// A nil snapshot (local-only test runs) is replaced with an empty one
+	// whose nil store makes the no-coderef check SKIP cleanly.
+	if snapshot == nil {
+		snapshot = &remoteSnapshot{}
+	}
+
 	return []core.Check{
 		&legacyUnmigratedCheck{projectDir: projectDir},
 		&drignoreCheck{projectDir: projectDir},
 		&historyCheck{projectDir: projectDir},
+		&noCodeRefCheck{remoteBase{projectDir: projectDir, snapshot: snapshot}},
+		&checkoutsOrphanedCheck{projectDir: projectDir},
 	}
 }
 

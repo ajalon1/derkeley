@@ -107,7 +107,7 @@ func writeHistoryLog(t *testing.T, projectDir, content string) {
 // --- ExtraChecks fixed order ---
 
 func TestExtraChecks_FixedOrder(t *testing.T) {
-	ids := make([]string, 0, 3)
+	ids := make([]string, 0, 5)
 
 	for _, c := range ExtraChecks(t.TempDir(), nil) {
 		ids = append(ids, c.ID())
@@ -117,6 +117,8 @@ func TestExtraChecks_FixedOrder(t *testing.T) {
 		CheckIDLegacyUnmigrated,
 		CheckIDDrignore,
 		CheckIDHistory,
+		CheckIDNoCodeRef,
+		CheckIDCheckoutsOrphaned,
 	}, ids)
 }
 
@@ -127,7 +129,7 @@ func TestLegacyUnmigrated_LegacyOnly_WARN(t *testing.T) {
 
 	results := runExtraChecks(t, dir)
 
-	require.Len(t, results, 3)
+	require.Len(t, results, 5)
 
 	assert.Equal(t, core.StatusWARN, results[0].Status)
 	assert.Contains(t, results[0].Summary, "legacy")
@@ -282,7 +284,7 @@ func TestHistory_Unlinked_SKIP(t *testing.T) {
 // --- Full Checks() order (VAL-EXTRA: checks after remote block) ---
 
 func TestChecks_FullOrder_WithExtras(t *testing.T) {
-	ids := make([]string, 0, 13)
+	ids := make([]string, 0, 15)
 
 	for _, c := range Checks(t.TempDir(), &fakeArtifactStore{}) {
 		ids = append(ids, c.ID())
@@ -301,10 +303,12 @@ func TestChecks_FullOrder_WithExtras(t *testing.T) {
 		CheckIDArtifactLocked,
 		CheckIDCatalogMismatch,
 		CheckIDDrift,
-		// 3 M4 extras (local)
+		// 5 M4 extras
 		CheckIDLegacyUnmigrated,
 		CheckIDDrignore,
 		CheckIDHistory,
+		CheckIDNoCodeRef,
+		CheckIDCheckoutsOrphaned,
 	}, ids)
 }
 

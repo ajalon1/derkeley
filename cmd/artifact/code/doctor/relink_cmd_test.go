@@ -68,8 +68,10 @@ func TestRunE_RelinkHappyPath_PostRelinkChecksTargetNew(t *testing.T) {
 	assert.Equal(t, "relink", relinkAction.ID)
 	assert.Equal(t, "performed", relinkAction.Status)
 
-	// Post-relink checks target the new artifact (all OK).
-	assert.Equal(t, "ok", report.Status)
+	// Post-relink checks target the new artifact. The new artifact is a
+	// never-synced draft (no codeRef), so remote.no-coderef WARNs; the
+	// overall status is warn (not fail).
+	assert.Equal(t, "warn", report.Status)
 
 	require.NotNil(t, report.ArtifactID)
 

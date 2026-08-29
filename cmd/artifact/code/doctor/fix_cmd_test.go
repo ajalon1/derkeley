@@ -73,7 +73,9 @@ func TestRunE_FixHealthyProject_NothingToDo_ExitZero(t *testing.T) {
 	assert.Empty(t, errOut.String())
 	assert.Contains(t, outStr, "Repairs")
 	assert.Contains(t, outStr, "nothing to fix")
-	assert.Contains(t, outStr, "verdict: ok")
+	// A never-synced draft has no codeRef, so remote.no-coderef WARNs; the
+	// verdict is warn (not fail) and --fix correctly reports nothing to do.
+	assert.Contains(t, outStr, "verdict: warn")
 }
 
 // TestRunE_FixMissingManifest_PostFixOK_ExitZero covers VAL-FIX-002,
@@ -100,8 +102,9 @@ func TestRunE_FixMissingManifest_PostFixOK_ExitZero(t *testing.T) {
 
 	require.NoError(t, json.Unmarshal([]byte(outStr), &report), "stdout must be a single pure-JSON object")
 
-	assert.Equal(t, "ok", report.Status, "post-fix state is healthy")
-	assert.Equal(t, 13, report.Summary.OK)
+	assert.Equal(t, "warn", report.Status, "post-fix state has no-coderef WARN (never-synced draft)")
+	assert.Equal(t, 14, report.Summary.OK)
+	assert.Equal(t, 1, report.Summary.WARN)
 
 	require.Len(t, report.Actions, 5)
 
@@ -113,7 +116,11 @@ func TestRunE_FixMissingManifest_PostFixOK_ExitZero(t *testing.T) {
 	assert.Equal(t, "wapi.drignore", report.Actions[4].ID)
 
 	for _, check := range report.Checks {
-		assert.Equal(t, "OK", check.Status, "post-fix check %s", check.ID)
+		if check.ID == "remote.no-coderef" {
+			assert.Equal(t, "WARN", check.Status, "no-coderef WARNs on a never-synced draft")
+		} else {
+			assert.Equal(t, "OK", check.Status, "post-fix check %s", check.ID)
+		}
 	}
 
 	// The rebuilt manifest parses and is an empty BASE (both-or-neither).
@@ -304,7 +311,9 @@ func TestRunE_FixSecondRunIsNoop(t *testing.T) {
 
 	require.NoError(t, json.Unmarshal(out.Bytes(), &report))
 
-	assert.Equal(t, "ok", report.Status)
+	// A never-synced draft has no codeRef, so remote.no-coderef WARNs; the
+	// overall status is warn (not fail) and all repair actions are not-needed.
+	assert.Equal(t, "warn", report.Status)
 
 	for _, action := range report.Actions {
 		assert.Equal(t, "not-needed", action.Status, "action %s", action.ID)

@@ -75,8 +75,8 @@ type jsonReport struct {
 }
 
 // pinnedCheckOrder is the fixed check order the command must preserve:
-// six local checks, four remote checks, then the M4 extra checks (thirteen
-// total on the extras branch).
+// six local checks, four remote checks, then the five M4 extra checks
+// (fifteen total on the extras branch).
 var pinnedCheckOrder = []string{
 	"wapi.presence",
 	"wapi.config",
@@ -91,6 +91,8 @@ var pinnedCheckOrder = []string{
 	"wapi.legacy-unmigrated",
 	"wapi.drignore",
 	"wapi.history",
+	"remote.no-coderef",
+	"wapi.checkouts-orphaned",
 }
 
 // withFakeArtifact swaps the command's remote artifact seam for fn, restoring
@@ -262,7 +264,9 @@ func TestRunE_HealthyProject_TextReport_ExitZero(t *testing.T) {
 	linkHealthyProject(t, tmp)
 
 	// A never-synced draft (no codeRef) matches the never-synced state files:
-	// every check, local and remote, must be OK.
+	// every check is OK except remote.no-coderef, which WARNs because the
+	// artifact has never been synced (no usable codeRef). checkouts-orphaned
+	// is OK (no .checkouts/ directory).
 	withFakeArtifact(t, func(id string) (*workload.Artifact, error) {
 		return fakeArtifact(id, "doctor-fixture", "DRAFT", nil), nil
 	})
@@ -282,7 +286,8 @@ func TestRunE_HealthyProject_TextReport_ExitZero(t *testing.T) {
 		assert.Contains(t, outStr, id, "renders check row %s", id)
 	}
 
-	assert.Contains(t, outStr, "Summary: 13 ok, 0 warn, 0 fail, 0 skip — verdict: ok")
+	// 14 OK (all except no-coderef), 1 WARN (no-coderef), 0 FAIL, 0 SKIP.
+	assert.Contains(t, outStr, "Summary: 14 ok, 1 warn, 0 fail, 0 skip — verdict: warn")
 }
 
 func TestRunE_UnlinkedProject_RendersReport_ExitsOneSilently(t *testing.T) {
@@ -305,6 +310,8 @@ func TestRunE_HealthyProject_JSONReport(t *testing.T) {
 
 	linkHealthyProject(t, tmp)
 
+	// A never-synced draft (no codeRef): all checks OK except remote.no-coderef
+	// which WARNs (the artifact has never been synced, so no usable codeRef).
 	withFakeArtifact(t, func(id string) (*workload.Artifact, error) {
 		return fakeArtifact(id, "doctor-fixture", "DRAFT", nil), nil
 	})
@@ -320,18 +327,23 @@ func TestRunE_HealthyProject_JSONReport(t *testing.T) {
 	assert.Equal(t, tmp, report.ProjectDir)
 	require.NotNil(t, report.ArtifactID)
 	assert.Equal(t, testArtifactID, *report.ArtifactID)
-	assert.Equal(t, "ok", report.Status)
+	assert.Equal(t, "warn", report.Status)
 	require.Len(t, report.Checks, len(pinnedCheckOrder))
 
 	gotOrder := make([]string, 0, len(report.Checks))
 
 	for _, check := range report.Checks {
 		gotOrder = append(gotOrder, check.ID)
-		assert.Equal(t, "OK", check.Status, "check %s", check.ID)
+
+		if check.ID == "remote.no-coderef" {
+			assert.Equal(t, "WARN", check.Status, "no-coderef WARNs on a never-synced draft")
+		} else {
+			assert.Equal(t, "OK", check.Status, "check %s", check.ID)
+		}
 	}
 
 	assert.Equal(t, pinnedCheckOrder, gotOrder)
-	assert.Equal(t, jsonSummary{OK: 13}, report.Summary)
+	assert.Equal(t, jsonSummary{OK: 14, WARN: 1}, report.Summary)
 }
 
 func TestRunE_JSONOutput_CorruptConfig_FailWithPath(t *testing.T) {
@@ -616,7 +628,7 @@ func TestRunE_RemoteNon404_AllSkipWithConnectivityRemedy_ExitZero(t *testing.T) 
 				}
 			}
 
-			assert.Equal(t, jsonSummary{OK: 9, SKIP: 4}, report.Summary)
+			assert.Equal(t, jsonSummary{OK: 10, SKIP: 5}, report.Summary)
 
 			assert.Equal(t, "ok", report.Status, "SKIP-only remote outcome keeps verdict ok")
 
