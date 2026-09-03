@@ -20,6 +20,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"slices"
@@ -27,7 +28,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/datarobot/cli/internal/auth"
 	"github.com/datarobot/cli/internal/config"
+	"github.com/datarobot/cli/internal/config/viperx"
 	"github.com/datarobot/cli/internal/envbuilder"
 	"github.com/datarobot/cli/internal/log"
 )
@@ -173,6 +176,8 @@ func updateDotenvFile(dotenvFile string) ([]envbuilder.Variable, string, error) 
 	dotenvFileLines, _ := readDotenvFile(dotenvFile)
 
 	variables, contents := envbuilder.VariablesFromLines(dotenvFileLines)
+	contents = addMissingDataRobotCredentials(contents, variables)
+	variables, contents = envbuilder.VariablesFromLines(slices.Collect(strings.Lines(contents)))
 
 	err := writeContents(contents, dotenvFile)
 	if err != nil {
@@ -180,6 +185,84 @@ func updateDotenvFile(dotenvFile string) ([]envbuilder.Variable, string, error) 
 	}
 
 	return variables, contents, nil
+}
+
+// addMissingDataRobotCredentials fills the core DataRobot variables into an
+// existing .env when they are absent. VariablesFromLines already refreshes the
+// values when the keys exist; this covers older or hand-written files that never
+// had the keys, while preserving every existing line.
+func addMissingDataRobotCredentials(contents string, variables []envbuilder.Variable) string {
+	seen := make(map[string]struct{}, len(variables))
+	for _, variable := range variables {
+		seen[variable.Name] = struct{}{}
+	}
+
+	endpoint, token := dataRobotCredentialValues()
+	lines := make([]string, 0, 2)
+
+	if _, ok := seen["DATAROBOT_ENDPOINT"]; !ok && endpoint != "" {
+		lines = append(lines, (&envbuilder.Variable{
+			Name:  "DATAROBOT_ENDPOINT",
+			Value: endpoint,
+		}).String())
+	}
+
+	if _, ok := seen["DATAROBOT_API_TOKEN"]; !ok && token != "" {
+		lines = append(lines, (&envbuilder.Variable{
+			Name:   "DATAROBOT_API_TOKEN",
+			Value:  token,
+			Secret: true,
+		}).String())
+	}
+
+	if len(lines) == 0 {
+		return contents
+	}
+
+	if contents != "" && !strings.HasSuffix(contents, "\n") {
+		contents += "\n"
+	}
+
+	return contents + strings.Join(lines, "")
+}
+
+// dataRobotCredentialValues returns the credential pair that dotenv update
+// should write. A complete process environment pair wins because auth
+// resolution gives it the same precedence; otherwise the stored CLI config is
+// used.
+func dataRobotCredentialValues() (string, string) {
+	if creds := auth.GetEnvCredentials(); creds.Endpoint != "" && creds.Token != "" {
+		return canonicalDotenvEndpoint(creds.Endpoint), creds.Token
+	}
+
+	return canonicalDotenvEndpoint(viperx.GetString(config.DataRobotURL)), viperx.GetString(config.DataRobotAPIKey)
+}
+
+// canonicalDotenvEndpoint normalizes the endpoint written to .env without
+// discarding custom API prefixes used by self-managed installations.
+func canonicalDotenvEndpoint(raw string) string {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return ""
+	}
+
+	if !strings.Contains(trimmed, "://") {
+		trimmed = "https://" + trimmed
+	}
+
+	parsed, err := url.Parse(trimmed)
+	if err != nil || parsed.Host == "" {
+		return raw
+	}
+
+	path := strings.TrimRight(parsed.Path, "/")
+	if path == "" {
+		path = config.DRAPIURLSuffix
+	}
+
+	parsed.Path, parsed.RawQuery, parsed.Fragment = path, "", ""
+
+	return parsed.String()
 }
 
 func stripHeader(contents string) string {

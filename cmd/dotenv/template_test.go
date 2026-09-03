@@ -15,12 +15,16 @@
 package dotenv
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/datarobot/cli/internal/config"
+	"github.com/datarobot/cli/internal/config/viperx"
 	"github.com/datarobot/cli/internal/envbuilder"
 	"github.com/datarobot/cli/internal/testutil"
 	"github.com/stretchr/testify/suite"
@@ -44,6 +48,19 @@ func (suite *TemplateTestSuite) SetupTest() {
 
 	suite.T().Setenv("DATAROBOT_ENDPOINT", "")
 	suite.T().Setenv("DATAROBOT_API_TOKEN", "")
+}
+
+func (suite *TemplateTestSuite) setAuthenticatedConfig(token string) {
+	suite.T().Helper()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	suite.T().Cleanup(server.Close)
+	suite.T().Cleanup(viperx.Reset)
+
+	viperx.Set(config.DataRobotURL, server.URL+"/api/v2")
+	viperx.Set(config.DataRobotAPIKey, token)
 }
 
 func (suite *TemplateTestSuite) TestCreateDotenvWithoutTemplate() {
@@ -108,6 +125,38 @@ func (suite *TemplateTestSuite) TestReadDotfile() {
 	)
 
 	os.Remove(suite.dotfile)
+}
+
+func (suite *TemplateTestSuite) TestUpdateDotenvFileAddsMissingDataRobotCredentials() {
+	suite.setAuthenticatedConfig("test-token")
+
+	err := os.WriteFile(suite.dotfile, []byte("CUSTOM_SETTING=\"kept\"\n"), 0o644)
+	suite.Require().NoError(err)
+
+	variables, contents, err := updateDotenvFile(suite.dotfile)
+	suite.Require().NoError(err)
+
+	suite.Regexp(`(?m:^CUSTOM_SETTING="kept"$)`, contents)
+	suite.Regexp(`(?m:^DATAROBOT_ENDPOINT="http://127\.0\.0\.1:\d+/api/v2"$)`, contents)
+	suite.Regexp(`(?m:^DATAROBOT_API_TOKEN="test-token"$)`, contents)
+	suite.Contains(variables, envbuilder.Variable{Name: "CUSTOM_SETTING", Value: "kept"})
+	suite.Len(variables, 3)
+	suite.Contains(variables, envbuilder.Variable{Name: "DATAROBOT_API_TOKEN", Value: "test-token", Secret: true})
+}
+
+func (suite *TemplateTestSuite) TestUpdateDotenvFileDoesNotDuplicateDataRobotCredentials() {
+	suite.setAuthenticatedConfig("new-token")
+
+	err := os.WriteFile(suite.dotfile, []byte("DATAROBOT_ENDPOINT=\"old\"\nDATAROBOT_API_TOKEN=\"old-token\"\n"), 0o644)
+	suite.Require().NoError(err)
+
+	_, contents, err := updateDotenvFile(suite.dotfile)
+	suite.Require().NoError(err)
+
+	suite.Equal(1, strings.Count(contents, "DATAROBOT_ENDPOINT="))
+	suite.Equal(1, strings.Count(contents, "DATAROBOT_API_TOKEN="))
+	suite.Regexp(`(?m:^DATAROBOT_ENDPOINT="http://127\.0\.0\.1:\d+/api/v2"$)`, contents)
+	suite.Regexp(`(?m:^DATAROBOT_API_TOKEN="new-token"$)`, contents)
 }
 
 func (suite *TemplateTestSuite) TestMultipleSavesDoNotDuplicateHeader() {
