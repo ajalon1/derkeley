@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Fixed
 
+- `dr dotenv update` now adds `DATAROBOT_ENDPOINT` and `DATAROBOT_API_TOKEN` to an existing `.env` file when those keys are missing, instead of only refreshing them when the file already declared them. The command still preserves unrelated settings and does not duplicate credentials that are already present.
 - `dr artifact code sync` no longer overwrites or deletes a local file without a recoverable copy. Before the remote wins, your version is saved as `<path>.LOCAL.<timestamp>`, for every case that touches the working tree — not only conflicts, as before — including a remote-modified download that used to be applied silently with no backup. Those `.LOCAL` copies are also excluded from the next sync, so a backup is never re-uploaded as new content.
 - `dr workload delete` now clears a `workloadId` written as a YAML alias. The reader resolves the alias before answering, so such a binding is the one the project deploys to, but the removal compared the unresolved node and left the file as stale as it found it while reporting the delete a success.
 - `dr workload up --dir <path>` now says which flag named a path that is not a directory, instead of failing with a bare `not a directory`, matching what `dr workload delete --dir` already said.
